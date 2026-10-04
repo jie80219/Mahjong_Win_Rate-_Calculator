@@ -64,7 +64,11 @@ export default function App() {
     updatePrefs({ selectedPlayerIds: [...args.playerIds] });
   }, [createSession, updatePrefs]);
 
-  const handleDealerAdjust = useCallback(async (dealerIndex: number, consecutive: number) => {
+  const handleDealerAdjust = useCallback(async (
+    newSeatOrder: [string, string, string, string],
+    dealerIndex: number,
+    consecutive: number,
+  ) => {
     if (!activeSession) return;
     const currentSeq = rounds.filter(r => r.tableSessionId === activeSession.id).length;
     const overrides = [...(activeSession.dealerOverrides ?? [])];
@@ -74,8 +78,8 @@ export default function App() {
     } else {
       overrides.push({ afterSequence: currentSeq, dealerIndex, consecutive });
     }
-    const updated = { ...activeSession, dealerOverrides: overrides };
-    await db.tableSessions.update(activeSession.id, { dealerOverrides: overrides });
+    const updated = { ...activeSession, seatOrder: newSeatOrder, dealerOverrides: overrides };
+    await db.tableSessions.update(activeSession.id, { seatOrder: newSeatOrder, dealerOverrides: overrides });
     setActiveSession(updated);
     await refreshSessions();
   }, [activeSession, rounds, refreshSessions]);

@@ -356,6 +356,67 @@ button:disabled {
   margin-bottom: 12px;
 }
 
+.seat-drag-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.seat-drag-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.seat-drag-item:active { cursor: grabbing; }
+
+.seat-drag-item.dealer-selected {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.seat-drag-wind {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--surface);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #f59e0b;
+  flex-shrink: 0;
+}
+
+.seat-drag-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  min-width: 0;
+}
+
+.seat-drag-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.seat-drag-handle {
+  color: var(--text-secondary);
+  font-size: 16px;
+  cursor: grab;
+  flex-shrink: 0;
+}
+
 .dealer-adjust-actions {
   display: flex;
   gap: 8px;
