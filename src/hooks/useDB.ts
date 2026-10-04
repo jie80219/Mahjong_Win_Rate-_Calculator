@@ -16,10 +16,16 @@ export function useTableSessions() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  const createSession = useCallback(async (playerIds: [string, string, string, string]) => {
+  const createSession = useCallback(async (
+    playerIds: [string, string, string, string],
+    seatOrder?: [string, string, string, string],
+    initialDealerIndex?: number,
+  ) => {
     const session: TableSession = {
       id: generateId(),
       playerIds,
+      seatOrder,
+      initialDealerIndex,
       startedAt: nowISO(),
       endedAt: null,
     };

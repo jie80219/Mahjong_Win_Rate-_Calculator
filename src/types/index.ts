@@ -6,9 +6,18 @@ export interface Player {
   isActive: boolean;
 }
 
+export interface DealerOverride {
+  afterSequence: number;
+  dealerIndex: number;
+  consecutive: number;
+}
+
 export interface TableSession {
   id: string;
   playerIds: [string, string, string, string];
+  seatOrder?: [string, string, string, string];
+  initialDealerIndex?: number;
+  dealerOverrides?: DealerOverride[];
   startedAt: string;
   endedAt: string | null;
 }
@@ -22,8 +31,19 @@ export interface Round {
   winnerId: string | null;
   discarderId: string | null;
   tai: number | null;
+  dealerId?: string | null;
+  dealerConsecutive?: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export type WindName = '東' | '南' | '西' | '北';
+
+export interface DealerState {
+  dealerId: string;
+  consecutive: number;
+  wind: WindName;
+  windRound: number;
 }
 
 export interface Preferences {

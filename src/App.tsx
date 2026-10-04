@@ -1,14 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { TableSession, Preferences, Round } from './types';
 import { useTableSessions, useRounds, useAllTablePlayerIds } from './hooks/useDB';
+import { db } from './db';
 import { loadPreferences, savePreferences } from './utils/preferences';
 import { getPlayerName } from './db/players';
 import { computePlayerStats, filterRoundsByDate } from './utils/stats';
+import { computeDealerState } from './utils/dealer';
 import TableSetup from './components/TableSetup';
 import RoundRecorder from './components/RoundRecorder';
 import Dashboard from './components/Dashboard';
 import HistoryPanel from './components/HistoryPanel';
 import BackupPanel from './components/BackupPanel';
+import DealerAdjustPanel from './components/DealerAdjustPanel';
 import './index.css';
 
 type View = 'setup' | 'game';
@@ -25,6 +28,11 @@ export default function App() {
   const [historyFilter, setHistoryFilter] = useState<{ playerId?: string; metric?: string } | null>(null);
   const [undoRoundId, setUndoRoundId] = useState<string | null>(null);
   const [showUndo, setShowUndo] = useState(false);
+
+  const dealerState = useMemo(() => {
+    if (!activeSession) return null;
+    return computeDealerState(activeSession, rounds);
+  }, [activeSession, rounds]);
 
   const refreshAll = useCallback(async () => {
     await refreshSessions();
@@ -46,19 +54,42 @@ export default function App() {
     });
   }, []);
 
-  const handleStartTable = useCallback(async (playerIds: [string, string, string, string]) => {
-    const session = await createSession(playerIds);
+  const handleStartTable = useCallback(async (args: {
+    playerIds: [string, string, string, string];
+    seatOrder: [string, string, string, string];
+    initialDealerIndex: number;
+  }) => {
+    const session = await createSession(args.playerIds, args.seatOrder, args.initialDealerIndex);
     setActiveSession(session);
-    updatePrefs({ selectedPlayerIds: [...playerIds] });
+    updatePrefs({ selectedPlayerIds: [...args.playerIds] });
   }, [createSession, updatePrefs]);
 
+  const handleDealerAdjust = useCallback(async (dealerIndex: number, consecutive: number) => {
+    if (!activeSession) return;
+    const currentSeq = rounds.filter(r => r.tableSessionId === activeSession.id).length;
+    const overrides = [...(activeSession.dealerOverrides ?? [])];
+    const existingIdx = overrides.findIndex(o => o.afterSequence === currentSeq);
+    if (existingIdx >= 0) {
+      overrides[existingIdx] = { afterSequence: currentSeq, dealerIndex, consecutive };
+    } else {
+      overrides.push({ afterSequence: currentSeq, dealerIndex, consecutive });
+    }
+    const updated = { ...activeSession, dealerOverrides: overrides };
+    await db.tableSessions.update(activeSession.id, { dealerOverrides: overrides });
+    setActiveSession(updated);
+    await refreshSessions();
+  }, [activeSession, rounds, refreshSessions]);
+
   const handleSaveRound = useCallback(async (data: Omit<Round, 'id' | 'createdAt' | 'updatedAt' | 'sequence'>) => {
-    const round = await addRound(data);
+    const roundData = dealerState
+      ? { ...data, dealerId: dealerState.dealerId, dealerConsecutive: dealerState.consecutive }
+      : data;
+    const round = await addRound(roundData);
     await refreshMap();
     setUndoRoundId(round.id);
     setShowUndo(true);
     setTimeout(() => setShowUndo(false), 5000);
-  }, [addRound, refreshMap]);
+  }, [addRound, refreshMap, dealerState]);
 
   const handleUndo = useCallback(async () => {
     if (!undoRoundId) return;
@@ -150,6 +181,27 @@ export default function App() {
               換桌
             </button>
           </div>
+
+          {dealerState && (
+            <div className="dealer-info-bar">
+              <div className="dealer-info-main">
+                <span className="dealer-wind">{dealerState.wind}圈</span>
+                <span className="dealer-current">
+                  <span className="dealer-badge">莊</span>
+                  {getPlayerName(dealerState.dealerId)}
+                </span>
+                {dealerState.consecutive > 0 && (
+                  <span className="dealer-consecutive">連{dealerState.consecutive}</span>
+                )}
+                <DealerAdjustPanel
+                  session={activeSession}
+                  dealerState={dealerState}
+                  onApply={handleDealerAdjust}
+                />
+              </div>
+
+            </div>
+          )}
 
           <RoundRecorder
             tableSession={activeSession}

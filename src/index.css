@@ -153,6 +153,41 @@ button:disabled {
   border-style: solid;
   border-color: var(--primary);
   background: var(--primary-light);
+  cursor: pointer;
+}
+
+.seat-slot.dealer {
+  border-color: #f59e0b;
+  background: #fef3c7;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .seat-slot.dealer {
+    background: #451a03;
+  }
+}
+:root[data-theme="dark"] .seat-slot.dealer {
+  background: #451a03;
+}
+
+.dealer-badge {
+  display: inline-block;
+  background: #f59e0b;
+  color: #000;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.setup-hint {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-bottom: 12px;
 }
 
 .seat-content {
@@ -234,6 +269,96 @@ button:disabled {
   border-radius: var(--radius);
   margin-bottom: 16px;
   box-shadow: var(--shadow);
+}
+
+.dealer-info-bar {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+  border-left: 4px solid #f59e0b;
+}
+
+.dealer-info-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.dealer-wind {
+  color: #f59e0b;
+  font-size: 16px;
+}
+
+.dealer-current {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dealer-consecutive {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.dealer-adjust-toggle {
+  font-size: 13px;
+  margin-left: auto;
+}
+
+.dealer-adjust-panel {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.dealer-adjust-label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.dealer-adjust-players {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.dealer-adjust-btn {
+  flex: 1;
+  padding: 8px 4px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.dealer-adjust-btn.active {
+  background: #f59e0b;
+  color: #000;
+  border-color: #f59e0b;
+  font-weight: 700;
+}
+
+.dealer-adjust-consecutive {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.dealer-adjust-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .table-players { display: flex; gap: 8px; flex-wrap: wrap; }

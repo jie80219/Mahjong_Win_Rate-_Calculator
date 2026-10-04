@@ -3,14 +3,25 @@ import type { TableSession } from '../types';
 import { PLAYERS, getPlayerName } from '../db/players';
 import { loadLastTable } from '../utils/preferences';
 
+interface StartTableArgs {
+  playerIds: [string, string, string, string];
+  seatOrder: [string, string, string, string];
+  initialDealerIndex: number;
+}
+
 interface Props {
   sessions: TableSession[];
-  onStartTable: (playerIds: [string, string, string, string]) => void;
+  onStartTable: (args: StartTableArgs) => void;
   onResumeSession: (session: TableSession) => void;
 }
 
+type Step = 'select' | 'seat';
+
 export default function TableSetup({ sessions, onStartTable, onResumeSession }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
+  const [step, setStep] = useState<Step>('select');
+  const [seatOrder, setSeatOrder] = useState<string[]>([]);
+  const [dealerIndex, setDealerIndex] = useState<number>(0);
   const lastTable = loadLastTable();
 
   const togglePlayer = useCallback((pid: string) => {
@@ -35,6 +46,72 @@ export default function TableSetup({ sessions, onStartTable, onResumeSession }: 
   }, [lastTable]);
 
   const canStart = selected.length === 4;
+
+  const goToSeatStep = useCallback(() => {
+    setSeatOrder([...selected]);
+    setDealerIndex(0);
+    setStep('seat');
+  }, [selected]);
+
+  const seatMoveUp = useCallback((index: number) => {
+    if (index <= 0) return;
+    setSeatOrder(prev => {
+      const next = [...prev];
+      [next[index - 1], next[index]] = [next[index], next[index - 1]];
+      if (dealerIndex === index) setDealerIndex(index - 1);
+      else if (dealerIndex === index - 1) setDealerIndex(index);
+      return next;
+    });
+  }, [dealerIndex]);
+
+  const handleConfirmStart = useCallback(() => {
+    onStartTable({
+      playerIds: selected as [string, string, string, string],
+      seatOrder: seatOrder as [string, string, string, string],
+      initialDealerIndex: dealerIndex,
+    });
+  }, [selected, seatOrder, dealerIndex, onStartTable]);
+
+  if (step === 'seat') {
+    return (
+      <div className="table-setup">
+        <h2>設定座位順序與莊家</h2>
+        <p className="setup-hint">調整輪轉順序，並選擇起始莊家</p>
+
+        <div className="seat-slots">
+          {seatOrder.map((pid, i) => (
+            <div
+              key={pid}
+              className={`seat-slot filled ${dealerIndex === i ? 'dealer' : ''}`}
+              onClick={() => setDealerIndex(i)}
+            >
+              <div className="seat-content">
+                <span>
+                  {dealerIndex === i && <span className="dealer-badge">莊</span>}
+                  {getPlayerName(pid)}
+                </span>
+                <div className="seat-actions">
+                  {i > 0 && <button className="btn-icon-sm" onClick={(e) => { e.stopPropagation(); seatMoveUp(i); }} title="上移">↑</button>}
+                  {i < 3 && <button className="btn-icon-sm" onClick={(e) => { e.stopPropagation(); seatMoveUp(i + 1); }} title="下移">↓</button>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <p className="setup-hint">點擊玩家選為莊家，用箭頭調整順序</p>
+
+        <div className="recorder-actions">
+          <button className="btn-primary btn-block" onClick={handleConfirmStart}>
+            開始牌桌
+          </button>
+          <button className="btn-secondary btn-block" onClick={() => setStep('select')}>
+            返回選人
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="table-setup">
@@ -88,9 +165,9 @@ export default function TableSetup({ sessions, onStartTable, onResumeSession }: 
       <button
         className="btn-primary btn-block"
         disabled={!canStart}
-        onClick={() => onStartTable(selected as [string, string, string, string])}
+        onClick={goToSeatStep}
       >
-        {canStart ? '開始牌桌' : `還需選 ${4 - selected.length} 人`}
+        {canStart ? '下一步：設定莊家' : `還需選 ${4 - selected.length} 人`}
       </button>
 
       {sessions.length > 0 && (
