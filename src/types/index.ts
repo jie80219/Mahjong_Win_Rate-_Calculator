@@ -35,7 +35,7 @@ export interface Preferences {
   schemaVersion: number;
 }
 
-export type MetricKey = 'selfDraw' | 'win' | 'discard' | 'beDrawn' | 'critical' | 'beCritical';
+export type MetricKey = 'selfDraw' | 'win' | 'discard' | 'beDrawn' | 'critical' | 'beCritical' | 'overallWin' | 'drawRate';
 
 export interface DateRange {
   type: 'all' | 'today' | 'week' | 'month' | 'custom';
@@ -65,6 +65,8 @@ export interface ComputedStats extends PlayerStats {
   criticalRate: number | null;
   beCriticalRate: number | null;
   criticalInWinRate: number | null;
+  overallWinRate: number | null;
+  drawRate: number | null;
 }
 
 export interface RoundSummary extends Round {

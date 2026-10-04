@@ -1,15 +1,19 @@
 import { useState, useCallback, useRef } from 'react';
-import { exportData, validateImport, importData } from '../utils/backup';
+import { exportData, exportHtml, validateImport, importData } from '../utils/backup';
+import { db } from '../db';
 
 interface Props {
   onClose: () => void;
   onImported: () => Promise<void>;
 }
 
+type ClearStage = 'idle' | 'stage1' | 'stage2';
+
 export default function BackupPanel({ onClose, onImported }: Props) {
   const [importPreview, setImportPreview] = useState<{ tableSessions: number; rounds: number; errors: string[] } | null>(null);
   const [importJson, setImportJson] = useState<string>('');
   const [importing, setImporting] = useState(false);
+  const [clearStage, setClearStage] = useState<ClearStage>('idle');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleExport = useCallback(async () => {
@@ -19,6 +23,17 @@ export default function BackupPanel({ onClose, onImported }: Props) {
     const a = document.createElement('a');
     a.href = url;
     a.download = `mahjong_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
+  const handleExportHtml = useCallback(async () => {
+    const html = await exportHtml();
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mahjong_report_${new Date().toISOString().slice(0, 10)}.html`;
     a.click();
     URL.revokeObjectURL(url);
   }, []);
@@ -66,6 +81,16 @@ export default function BackupPanel({ onClose, onImported }: Props) {
     }
   }, [importJson, onImported, onClose]);
 
+  const handleClearAll = useCallback(async () => {
+    await db.rounds.clear();
+    await db.tableSessions.clear();
+    try { localStorage.clear(); } catch {}
+    await onImported();
+    setClearStage('idle');
+    onClose();
+    window.location.reload();
+  }, [onImported, onClose]);
+
   return (
     <div className="panel-overlay">
       <div className="panel">
@@ -76,9 +101,14 @@ export default function BackupPanel({ onClose, onImported }: Props) {
 
         <div className="backup-section">
           <h4>匯出備份</h4>
-          <button className="btn-primary btn-block" onClick={handleExport}>
-            匯出 JSON
-          </button>
+          <div className="export-buttons">
+            <button className="btn-primary btn-block" onClick={handleExport}>
+              匯出 JSON
+            </button>
+            <button className="btn-secondary btn-block" onClick={handleExportHtml}>
+              匯出 HTML 報表
+            </button>
+          </div>
         </div>
 
         <div className="backup-section">
@@ -113,6 +143,46 @@ export default function BackupPanel({ onClose, onImported }: Props) {
                   {importing ? '匯入中...' : '確認匯入（取代現有資料）'}
                 </button>
               )}
+            </div>
+          )}
+        </div>
+
+        <div className="backup-section clear-section">
+          <h4>清除所有資料</h4>
+          {clearStage === 'idle' && (
+            <button
+              className="btn-danger-block"
+              onClick={() => setClearStage('stage1')}
+            >
+              清除所有資料
+            </button>
+          )}
+
+          {clearStage === 'stage1' && (
+            <div className="clear-confirm-box">
+              <p className="clear-warn">此操作將永久刪除所有牌桌和牌局紀錄，且無法復原。</p>
+              <div className="clear-buttons">
+                <button className="btn-secondary" onClick={() => setClearStage('idle')}>
+                  取消
+                </button>
+                <button className="btn-danger-block" onClick={() => setClearStage('stage2')}>
+                  確定要清除
+                </button>
+              </div>
+            </div>
+          )}
+
+          {clearStage === 'stage2' && (
+            <div className="clear-confirm-box clear-confirm-final">
+              <p className="clear-warn">真的確定嗎？所有資料將被永久刪除！</p>
+              <div className="clear-buttons">
+                <button className="btn-danger-block" onClick={handleClearAll}>
+                  永久刪除所有資料
+                </button>
+                <button className="btn-secondary" onClick={() => setClearStage('idle')}>
+                  取消
+                </button>
+              </div>
             </div>
           )}
         </div>

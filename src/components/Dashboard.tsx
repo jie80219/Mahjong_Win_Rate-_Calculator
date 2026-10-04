@@ -22,10 +22,12 @@ interface Props {
 const METRICS: { key: MetricKey; label: string }[] = [
   { key: 'selfDraw', label: '自摸' },
   { key: 'win', label: '胡牌' },
+  { key: 'overallWin', label: '勝率' },
   { key: 'discard', label: '放槍' },
   { key: 'beDrawn', label: '被摸' },
   { key: 'critical', label: '爆擊' },
   { key: 'beCritical', label: '被爆' },
+  { key: 'drawRate', label: '流局' },
 ];
 
 const VIEW_MODES = [

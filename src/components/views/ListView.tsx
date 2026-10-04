@@ -7,7 +7,7 @@ interface Props {
   onOpenHistory: (filter?: { playerId?: string; metric?: string }) => void;
 }
 
-type SortKey = 'name' | 'selfDraw' | 'win' | 'discard' | 'beDrawn' | 'critical' | 'beCritical' | 'total';
+type SortKey = 'name' | 'selfDraw' | 'win' | 'overallWin' | 'discard' | 'beDrawn' | 'critical' | 'beCritical' | 'drawRate' | 'total';
 
 export default function ListView({ stats, onOpenHistory }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('name');
@@ -30,10 +30,12 @@ export default function ListView({ stats, onOpenHistory }: Props) {
         case 'name': cmp = a.displayName.localeCompare(b.displayName, 'zh-TW'); break;
         case 'selfDraw': cmp = (a.selfDrawRate ?? -1) - (b.selfDrawRate ?? -1); break;
         case 'win': cmp = (a.winRate ?? -1) - (b.winRate ?? -1); break;
+        case 'overallWin': cmp = (a.overallWinRate ?? -1) - (b.overallWinRate ?? -1); break;
         case 'discard': cmp = (a.discardRate ?? -1) - (b.discardRate ?? -1); break;
         case 'beDrawn': cmp = (a.beDrawnRate ?? -1) - (b.beDrawnRate ?? -1); break;
         case 'critical': cmp = (a.criticalRate ?? -1) - (b.criticalRate ?? -1); break;
         case 'beCritical': cmp = (a.beCriticalRate ?? -1) - (b.beCriticalRate ?? -1); break;
+        case 'drawRate': cmp = (a.drawRate ?? -1) - (b.drawRate ?? -1); break;
         case 'total': cmp = a.total - b.total; break;
       }
       return sortAsc ? cmp : -cmp;
@@ -55,10 +57,12 @@ export default function ListView({ stats, onOpenHistory }: Props) {
               <th className="sticky-col" onClick={() => handleSort('name')}>玩家{sortIcon('name')}</th>
               <th onClick={() => handleSort('selfDraw')}>自摸率{sortIcon('selfDraw')}</th>
               <th onClick={() => handleSort('win')}>胡牌率{sortIcon('win')}</th>
+              <th onClick={() => handleSort('overallWin')}>勝率{sortIcon('overallWin')}</th>
               <th onClick={() => handleSort('discard')}>放槍率{sortIcon('discard')}</th>
               <th onClick={() => handleSort('beDrawn')}>被摸率{sortIcon('beDrawn')}</th>
               <th onClick={() => handleSort('critical')}>爆擊率{sortIcon('critical')}</th>
               <th onClick={() => handleSort('beCritical')}>被爆率{sortIcon('beCritical')}</th>
+              <th onClick={() => handleSort('drawRate')}>流局率{sortIcon('drawRate')}</th>
               <th onClick={() => handleSort('total')}>局數{sortIcon('total')}</th>
             </tr>
           </thead>
@@ -68,10 +72,12 @@ export default function ListView({ stats, onOpenHistory }: Props) {
                 <td className="sticky-col player-name">{s.displayName}</td>
                 <td onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'selfDraw' })} className="clickable">{formatRate(s.selfDrawRate)}</td>
                 <td onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'win' })} className="clickable">{formatRate(s.winRate)}</td>
+                <td onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'overallWin' })} className="clickable">{formatRate(s.overallWinRate)}</td>
                 <td onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'discard' })} className="clickable">{formatRate(s.discardRate)}</td>
                 <td onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'beDrawn' })} className="clickable">{formatRate(s.beDrawnRate)}</td>
                 <td onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'critical' })} className="clickable">{formatRate(s.criticalRate)}</td>
                 <td onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'beCritical' })} className="clickable">{formatRate(s.beCriticalRate)}</td>
+                <td onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'drawRate' })} className="clickable">{formatRate(s.drawRate)}</td>
                 <td>{s.total}（{s.effective}/{s.draws}）</td>
               </tr>
             ))}

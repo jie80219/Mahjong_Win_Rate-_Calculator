@@ -119,6 +119,7 @@ button:disabled {
 }
 
 .btn-block { display: block; width: 100%; }
+.export-buttons { display: flex; flex-direction: column; gap: 8px; }
 .btn-sm { padding: 6px 12px; min-height: 36px; font-size: 13px; }
 .btn-link { color: var(--primary); padding: 4px 8px; font-weight: 500; }
 .btn-icon { font-size: 20px; padding: 8px; min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
@@ -779,6 +780,40 @@ button:disabled {
   color: var(--danger);
 }
 
+.delete-confirm-dialog {
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--danger-light);
+  border-radius: 8px;
+  border: 1px solid var(--danger);
+}
+
+.delete-confirm-hint {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--danger);
+  margin-bottom: 8px;
+}
+
+.delete-confirm-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.delete-confirm-input {
+  width: 100px;
+  padding: 6px 10px;
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  text-align: center;
+}
+
 .backup-section {
   margin-bottom: 20px;
 }
@@ -818,6 +853,57 @@ button:disabled {
   list-style: disc;
   padding-left: 20px;
   font-size: 13px;
+}
+
+.clear-section {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+
+.btn-danger-block {
+  display: block;
+  width: 100%;
+  background: var(--danger);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 15px;
+  min-height: 44px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.15s;
+}
+.btn-danger-block:hover { opacity: 0.9; }
+
+.clear-confirm-box {
+  padding: 16px;
+  border-radius: var(--radius);
+  background: var(--danger-light);
+  border: 1px solid var(--danger);
+}
+
+.clear-confirm-final {
+  border-width: 2px;
+}
+
+.clear-warn {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--danger);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.clear-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.clear-buttons > button {
+  flex: 1;
+  min-height: 44px;
 }
 
 @media (min-width: 768px) {

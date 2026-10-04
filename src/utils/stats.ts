@@ -96,6 +96,9 @@ export function computePlayerStats(
     const rate = (n: number): number | null => (K === 0 ? null : n / K);
 
     const wins = stats.selfDraws + stats.ronWins;
+    const T = stats.total;
+    const rateT = (n: number): number | null => (T === 0 ? null : n / T);
+
     return {
       ...stats,
       selfDrawRate: rate(stats.selfDraws),
@@ -105,6 +108,8 @@ export function computePlayerStats(
       criticalRate: rate(stats.criticals),
       beCriticalRate: rate(stats.beCriticals),
       criticalInWinRate: wins === 0 ? null : stats.criticals / wins,
+      overallWinRate: rateT(wins),
+      drawRate: rateT(stats.draws),
     };
   });
 }
@@ -122,6 +127,8 @@ export function getRateValue(stats: ComputedStats, metric: string): number | nul
     case 'beDrawn': return stats.beDrawnRate;
     case 'critical': return stats.criticalRate;
     case 'beCritical': return stats.beCriticalRate;
+    case 'overallWin': return stats.overallWinRate;
+    case 'drawRate': return stats.drawRate;
     default: return null;
   }
 }
@@ -134,6 +141,8 @@ export function getMetricLabel(metric: string): string {
     beDrawn: '被摸率',
     critical: '爆擊率',
     beCritical: '被爆率',
+    overallWin: '勝率',
+    drawRate: '總流局率',
   };
   return labels[metric] ?? metric;
 }
@@ -146,6 +155,8 @@ export function getMetricNumerator(stats: ComputedStats, metric: string): number
     case 'beDrawn': return stats.beDrawn;
     case 'critical': return stats.criticals;
     case 'beCritical': return stats.beCriticals;
+    case 'overallWin': return stats.selfDraws + stats.ronWins;
+    case 'drawRate': return stats.draws;
     default: return 0;
   }
 }
@@ -178,25 +189,39 @@ export function computeCumulativeLine(
   let den = 0;
   let idx = 0;
 
+  const useTotalDenominator = metric === 'overallWin' || metric === 'drawRate';
+
   for (const r of sorted) {
     const tablePlayers = allTablePlayerIds.get(r.tableSessionId);
     if (!tablePlayers?.includes(playerId)) continue;
 
     if (r.resultType === 'draw') {
+      if (useTotalDenominator) {
+        den++;
+        if (metric === 'drawRate') num++;
+        points.push({
+          roundIndex: idx++,
+          roundId: r.id,
+          playedAt: r.playedAt,
+          value: den === 0 ? null : num / den,
+          numerator: num,
+          denominator: den,
+        });
+      }
       continue;
     }
 
     den++;
     if (r.resultType === 'selfDraw') {
       if (r.winnerId === playerId) {
-        if (metric === 'selfDraw' || metric === 'win') num++;
+        if (metric === 'selfDraw' || metric === 'win' || metric === 'overallWin') num++;
         if (metric === 'critical' && r.tai !== null && r.tai >= 5) num++;
       } else {
         if (metric === 'beDrawn') num++;
       }
     } else if (r.resultType === 'discardWin') {
       if (r.winnerId === playerId) {
-        if (metric === 'win') num++;
+        if (metric === 'win' || metric === 'overallWin') num++;
         if (metric === 'critical' && r.tai !== null && r.tai >= 5) num++;
       } else if (r.discarderId === playerId) {
         if (metric === 'discard') num++;

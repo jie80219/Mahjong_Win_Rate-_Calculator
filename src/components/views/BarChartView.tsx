@@ -16,7 +16,7 @@ export default function BarChartView({ stats, metric, onOpenHistory }: Props) {
     value: getRateValue(s, metric),
     rawValue: getRateValue(s, metric),
     numerator: getMetricNumerator(s, metric),
-    denominator: s.effective,
+    denominator: (metric === 'overallWin' || metric === 'drawRate') ? s.total : s.effective,
     playerId: s.playerId,
   }));
 

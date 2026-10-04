@@ -54,6 +54,7 @@ function matchesFilter(r: Round, filter: { playerId?: string; metric?: string } 
 export default function HistoryPanel({ rounds, tableSession, sessions, filter, onEdit, onDelete, onClose }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleteInput, setDeleteInput] = useState('');
 
   const filtered = useMemo(() => {
     let list = [...rounds];
@@ -126,13 +127,30 @@ export default function HistoryPanel({ rounds, tableSession, sessions, filter, o
                   <div className="history-actions">
                     <button className="btn-link" onClick={() => setEditingId(r.id)}>編輯</button>
                     {deleteConfirm === r.id ? (
-                      <span className="delete-confirm">
-                        確定刪除？
-                        <button className="btn-danger-sm" onClick={() => handleDelete(r.id)}>刪除</button>
-                        <button className="btn-link" onClick={() => setDeleteConfirm(null)}>取消</button>
-                      </span>
+                      <div className="delete-confirm-dialog">
+                        <p className="delete-confirm-hint">若要刪除紀錄請輸入「123」</p>
+                        <div className="delete-confirm-row">
+                          <input
+                            className="delete-confirm-input"
+                            type="text"
+                            inputMode="numeric"
+                            value={deleteInput}
+                            onChange={e => setDeleteInput(e.target.value)}
+                            placeholder="請輸入 123"
+                            autoFocus
+                          />
+                          <button
+                            className="btn-danger-sm"
+                            disabled={deleteInput !== '123'}
+                            onClick={() => handleDelete(r.id)}
+                          >
+                            確認刪除
+                          </button>
+                          <button className="btn-link" onClick={() => { setDeleteConfirm(null); setDeleteInput(''); }}>取消</button>
+                        </div>
+                      </div>
                     ) : (
-                      <button className="btn-link btn-danger-text" onClick={() => setDeleteConfirm(r.id)}>刪除</button>
+                      <button className="btn-link btn-danger-text" onClick={() => { setDeleteConfirm(r.id); setDeleteInput(''); }}>刪除</button>
                     )}
                   </div>
                 </div>

@@ -28,6 +28,11 @@ export default function CardView({ stats, onOpenHistory }: Props) {
               <span className="stat-value">{formatRate(s.winRate)}</span>
               <span className="stat-detail">{s.selfDraws + s.ronWins}/{s.effective}</span>
             </div>
+            <div className="card-stat" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'overallWin' })}>
+              <span className="stat-label">勝率</span>
+              <span className="stat-value">{formatRate(s.overallWinRate)}</span>
+              <span className="stat-detail">{s.selfDraws + s.ronWins}/{s.total}</span>
+            </div>
             <div className="card-stat" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'discard' })}>
               <span className="stat-label">放槍率</span>
               <span className="stat-value">{formatRate(s.discardRate)}</span>
@@ -47,6 +52,11 @@ export default function CardView({ stats, onOpenHistory }: Props) {
               <span className="stat-label">被爆率</span>
               <span className="stat-value">{formatRate(s.beCriticalRate)}</span>
               <span className="stat-detail">{s.beCriticals}/{s.effective}</span>
+            </div>
+            <div className="card-stat" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'drawRate' })}>
+              <span className="stat-label">流局率</span>
+              <span className="stat-value">{formatRate(s.drawRate)}</span>
+              <span className="stat-detail">{s.draws}/{s.total}</span>
             </div>
           </div>
           {s.criticalInWinRate !== null && (
