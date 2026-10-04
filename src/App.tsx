@@ -193,6 +193,11 @@ export default function App() {
               {activeSession.playerIds.map(pid => (
                 <span key={pid} className="player-chip">{getPlayerName(pid)}</span>
               ))}
+              {(activeSession.baseMoney != null || activeSession.taiMoney != null) && (
+                <span className="money-info-chip">
+                  底{activeSession.baseMoney ?? 0} / 台{activeSession.taiMoney ?? 0}
+                </span>
+              )}
             </div>
             <button className="btn-secondary btn-sm" onClick={handleBackToSetup}>
               換桌

@@ -23,7 +23,7 @@ function roundSummary(r: Round): string {
     return `${winner}自摸 ${r.tai} 台${isCritical ? ' 爆擊' : ''}`;
   }
   const discarder = r.discarderId ? getPlayerName(r.discarderId) : '?';
-  return `${winner}榮胡，${discarder}放槍 ${r.tai} 台${isCritical ? ' 爆擊' : ''}`;
+  return `${winner}胡牌，${discarder}放槍 ${r.tai} 台${isCritical ? ' 爆擊' : ''}`;
 }
 
 function matchesFilter(r: Round, filter: { playerId?: string; metric?: string } | null): boolean {

@@ -88,10 +88,10 @@ export default function RoundRecorder({ tableSession, onSave, initialData, editM
       if (tai === null) return `${wName}自摸`;
       return `${wName}自摸，${tai} 台${isCritical ? '，爆擊' : ''}`;
     }
-    if (!discarderId) return `${wName}榮胡`;
+    if (!discarderId) return `${wName}胡牌`;
     const dName = getPlayerName(discarderId);
-    if (tai === null) return `${wName}榮胡，${dName}放槍`;
-    return `${wName}榮胡，${dName}放槍，${tai} 台${isCritical ? '，爆擊' : ''}`;
+    if (tai === null) return `${wName}胡牌，${dName}放槍`;
+    return `${wName}胡牌，${dName}放槍，${tai} 台${isCritical ? '，爆擊' : ''}`;
   })();
 
   const handleSave = useCallback(async () => {
@@ -125,7 +125,7 @@ export default function RoundRecorder({ tableSession, onSave, initialData, editM
             className={`result-btn ${resultType === type ? 'active' : ''}`}
             onClick={() => handleResultType(type)}
           >
-            {{ selfDraw: '自摸', discardWin: '榮胡', draw: '流局' }[type]}
+            {{ selfDraw: '自摸', discardWin: '胡牌', draw: '流局' }[type]}
           </button>
         ))}
       </div>

@@ -422,7 +422,13 @@ button:disabled {
   gap: 8px;
 }
 
-.table-players { display: flex; gap: 8px; flex-wrap: wrap; }
+.table-players { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+.money-info-chip {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-left: 4px;
+}
 
 .player-chip {
   background: var(--primary-light);

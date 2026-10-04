@@ -24,8 +24,8 @@ export default function TableSetup({ sessions, onStartTable, onResumeSession }: 
   const [step, setStep] = useState<Step>('select');
   const [seatOrder, setSeatOrder] = useState<string[]>([]);
   const [dealerIndex, setDealerIndex] = useState<number>(0);
-  const [baseMoney, setBaseMoney] = useState<number>(100);
-  const [taiMoney, setTaiMoney] = useState<number>(100);
+  const [baseMoneyStr, setBaseMoneyStr] = useState('100');
+  const [taiMoneyStr, setTaiMoneyStr] = useState('100');
   const lastTable = loadLastTable();
 
   const togglePlayer = useCallback((pid: string) => {
@@ -73,10 +73,10 @@ export default function TableSetup({ sessions, onStartTable, onResumeSession }: 
       playerIds: selected as [string, string, string, string],
       seatOrder: seatOrder as [string, string, string, string],
       initialDealerIndex: dealerIndex,
-      baseMoney,
-      taiMoney,
+      baseMoney: Math.max(0, Number(baseMoneyStr) || 0),
+      taiMoney: Math.max(0, Number(taiMoneyStr) || 0),
     });
-  }, [selected, seatOrder, dealerIndex, baseMoney, taiMoney, onStartTable]);
+  }, [selected, seatOrder, dealerIndex, baseMoneyStr, taiMoneyStr, onStartTable]);
 
   if (step === 'seat') {
     return (
@@ -112,21 +112,21 @@ export default function TableSetup({ sessions, onStartTable, onResumeSession }: 
           <div className="money-row">
             <label className="money-label">底</label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               className="money-input"
-              value={baseMoney}
-              min={0}
-              onChange={e => setBaseMoney(Math.max(0, Number(e.target.value) || 0))}
+              value={baseMoneyStr}
+              onChange={e => setBaseMoneyStr(e.target.value.replace(/[^0-9]/g, ''))}
             />
           </div>
           <div className="money-row">
             <label className="money-label">台錢</label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               className="money-input"
-              value={taiMoney}
-              min={0}
-              onChange={e => setTaiMoney(Math.max(0, Number(e.target.value) || 0))}
+              value={taiMoneyStr}
+              onChange={e => setTaiMoneyStr(e.target.value.replace(/[^0-9]/g, ''))}
             />
           </div>
         </div>

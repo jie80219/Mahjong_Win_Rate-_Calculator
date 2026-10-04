@@ -59,7 +59,7 @@ export function validateImport(json: string): { data: BackupData | null; preview
       preview.errors.push(`牌局 ${r.id} 自摸缺少贏家或台數`);
     }
     if (r.resultType === 'discardWin' && (!r.winnerId || !r.discarderId || r.tai === null || r.tai === undefined)) {
-      preview.errors.push(`牌局 ${r.id} 榮胡缺少贏家、放槍者或台數`);
+      preview.errors.push(`牌局 ${r.id} 胡牌缺少贏家、放槍者或台數`);
     }
   }
 
