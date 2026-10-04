@@ -469,10 +469,30 @@ button:disabled {
   transition: all 0.15s;
 }
 
-.scope-btn.active, .view-btn.active, .metric-btn.active {
+.scope-btn.active, .view-btn.active, .metric-btn.active, .display-mode-btn.active {
   background: var(--surface);
   box-shadow: var(--shadow);
   font-weight: 700;
+}
+
+.display-mode-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  background: var(--bg);
+  padding: 4px;
+  border-radius: 8px;
+  max-width: 200px;
+}
+
+.display-mode-btn {
+  flex: 1;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 13px;
+  min-height: 32px;
+  transition: all 0.15s;
 }
 
 .player-filter {

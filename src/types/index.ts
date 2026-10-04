@@ -32,6 +32,7 @@ export interface Preferences {
   selectedPlayerIds: string[];
   scope: 'table' | 'all';
   dateRange: DateRange;
+  displayMode: 'rate' | 'count';
   schemaVersion: number;
 }
 

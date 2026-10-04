@@ -9,6 +9,7 @@ const DEFAULT_PREFS: Preferences = {
   selectedPlayerIds: [],
   scope: 'table',
   dateRange: { type: 'all' },
+  displayMode: 'rate',
   schemaVersion: 1,
 };
 
