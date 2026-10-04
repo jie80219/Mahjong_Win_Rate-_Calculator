@@ -20,12 +20,16 @@ export function useTableSessions() {
     playerIds: [string, string, string, string],
     seatOrder?: [string, string, string, string],
     initialDealerIndex?: number,
+    baseMoney?: number,
+    taiMoney?: number,
   ) => {
     const session: TableSession = {
       id: generateId(),
       playerIds,
       seatOrder,
       initialDealerIndex,
+      baseMoney,
+      taiMoney,
       startedAt: nowISO(),
       endedAt: null,
     };

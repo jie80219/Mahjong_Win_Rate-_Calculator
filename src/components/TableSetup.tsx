@@ -7,6 +7,8 @@ interface StartTableArgs {
   playerIds: [string, string, string, string];
   seatOrder: [string, string, string, string];
   initialDealerIndex: number;
+  baseMoney: number;
+  taiMoney: number;
 }
 
 interface Props {
@@ -22,6 +24,8 @@ export default function TableSetup({ sessions, onStartTable, onResumeSession }: 
   const [step, setStep] = useState<Step>('select');
   const [seatOrder, setSeatOrder] = useState<string[]>([]);
   const [dealerIndex, setDealerIndex] = useState<number>(0);
+  const [baseMoney, setBaseMoney] = useState<number>(100);
+  const [taiMoney, setTaiMoney] = useState<number>(100);
   const lastTable = loadLastTable();
 
   const togglePlayer = useCallback((pid: string) => {
@@ -69,8 +73,10 @@ export default function TableSetup({ sessions, onStartTable, onResumeSession }: 
       playerIds: selected as [string, string, string, string],
       seatOrder: seatOrder as [string, string, string, string],
       initialDealerIndex: dealerIndex,
+      baseMoney,
+      taiMoney,
     });
-  }, [selected, seatOrder, dealerIndex, onStartTable]);
+  }, [selected, seatOrder, dealerIndex, baseMoney, taiMoney, onStartTable]);
 
   if (step === 'seat') {
     return (
@@ -100,6 +106,30 @@ export default function TableSetup({ sessions, onStartTable, onResumeSession }: 
         </div>
 
         <p className="setup-hint">點擊玩家選為莊家，用箭頭調整順序</p>
+
+        <div className="money-settings">
+          <h3>金額設定</h3>
+          <div className="money-row">
+            <label className="money-label">底</label>
+            <input
+              type="number"
+              className="money-input"
+              value={baseMoney}
+              min={0}
+              onChange={e => setBaseMoney(Math.max(0, Number(e.target.value) || 0))}
+            />
+          </div>
+          <div className="money-row">
+            <label className="money-label">台錢</label>
+            <input
+              type="number"
+              className="money-input"
+              value={taiMoney}
+              min={0}
+              onChange={e => setTaiMoney(Math.max(0, Number(e.target.value) || 0))}
+            />
+          </div>
+        </div>
 
         <div className="recorder-actions">
           <button className="btn-primary btn-block" onClick={handleConfirmStart}>

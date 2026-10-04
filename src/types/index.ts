@@ -18,6 +18,8 @@ export interface TableSession {
   seatOrder?: [string, string, string, string];
   initialDealerIndex?: number;
   dealerOverrides?: DealerOverride[];
+  baseMoney?: number;
+  taiMoney?: number;
   startedAt: string;
   endedAt: string | null;
 }
@@ -55,7 +57,7 @@ export interface Preferences {
   schemaVersion: number;
 }
 
-export type MetricKey = 'selfDraw' | 'win' | 'discard' | 'beDrawn' | 'critical' | 'beCritical' | 'overallWin' | 'drawRate';
+export type MetricKey = 'selfDraw' | 'win' | 'discard' | 'beDrawn' | 'critical' | 'beCritical' | 'overallWin' | 'drawRate' | 'money';
 
 export interface DateRange {
   type: 'all' | 'today' | 'week' | 'month' | 'custom';

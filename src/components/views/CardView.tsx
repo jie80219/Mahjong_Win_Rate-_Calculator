@@ -1,18 +1,27 @@
 import type { ComputedStats } from '../../types';
 import { formatRate } from '../../utils/stats';
+import { formatMoney } from '../../utils/money';
 
 interface Props {
   stats: ComputedStats[];
   onOpenHistory: (filter?: { playerId?: string; metric?: string }) => void;
+  cumulativeMoney?: Record<string, number>;
 }
 
-export default function CardView({ stats, onOpenHistory }: Props) {
+export default function CardView({ stats, onOpenHistory, cumulativeMoney }: Props) {
   return (
     <div className="card-grid">
       {stats.map(s => (
         <div key={s.playerId} className="stat-card">
           <div className="card-header">
-            <h4>{s.displayName}</h4>
+            <div className="card-name-row">
+              <h4>{s.displayName}</h4>
+              {cumulativeMoney && cumulativeMoney[s.playerId] !== undefined && (
+                <span className={`card-money ${(cumulativeMoney[s.playerId] ?? 0) >= 0 ? 'positive' : 'negative'}`}>
+                  {formatMoney(cumulativeMoney[s.playerId] ?? 0)}
+                </span>
+              )}
+            </div>
             <span className="card-rounds">
               {s.total} 局（有效 {s.effective}・流局 {s.draws}）
             </span>

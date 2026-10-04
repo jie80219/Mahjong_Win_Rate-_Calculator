@@ -6,6 +6,7 @@ import { loadPreferences, savePreferences } from './utils/preferences';
 import { getPlayerName } from './db/players';
 import { computePlayerStats, filterRoundsByDate } from './utils/stats';
 import { computeDealerState } from './utils/dealer';
+import { computeAllRoundsMoney, computeCumulativeMoney } from './utils/money';
 import TableSetup from './components/TableSetup';
 import RoundRecorder from './components/RoundRecorder';
 import Dashboard from './components/Dashboard';
@@ -58,8 +59,10 @@ export default function App() {
     playerIds: [string, string, string, string];
     seatOrder: [string, string, string, string];
     initialDealerIndex: number;
+    baseMoney: number;
+    taiMoney: number;
   }) => {
-    const session = await createSession(args.playerIds, args.seatOrder, args.initialDealerIndex);
+    const session = await createSession(args.playerIds, args.seatOrder, args.initialDealerIndex, args.baseMoney, args.taiMoney);
     setActiveSession(session);
     updatePrefs({ selectedPlayerIds: [...args.playerIds] });
   }, [createSession, updatePrefs]);
@@ -152,6 +155,16 @@ export default function App() {
     ? filteredRounds.filter(r => r.resultType === 'draw' && r.tableSessionId === activeSession.id).length
     : filteredRounds.filter(r => r.resultType === 'draw').length;
 
+  const roundsMoney = useMemo(() => {
+    if (!activeSession) return [];
+    return computeAllRoundsMoney(filteredRounds, activeSession);
+  }, [activeSession, filteredRounds]);
+
+  const cumulativeMoney = useMemo(() => {
+    if (!activeSession) return {};
+    return computeCumulativeMoney(roundsMoney, [...activeSession.playerIds]);
+  }, [activeSession, roundsMoney]);
+
   return (
     <div className="app">
       <header className="app-header">
@@ -230,6 +243,8 @@ export default function App() {
             tableDraw={tableDraw}
             onOpenHistory={handleOpenHistory}
             sessions={sessions}
+            roundsMoney={roundsMoney}
+            cumulativeMoney={cumulativeMoney}
           />
 
           <div className="section-actions">

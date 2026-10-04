@@ -143,6 +143,7 @@ export function getMetricLabel(metric: string): string {
     beCritical: '被爆率',
     overallWin: '勝率',
     drawRate: '總流局率',
+    money: '金額',
   };
   return labels[metric] ?? metric;
 }

@@ -1,10 +1,13 @@
 import { useState, useCallback } from 'react';
 import type { ComputedStats, Preferences, MetricKey, Round, TableSession } from '../types';
+import type { RoundMoney } from '../utils/money';
 import { PLAYERS, getPlayerName } from '../db/players';
 import BarChartView from './views/BarChartView';
+import MoneyBarChart from './views/MoneyBarChart';
 import LineChartView from './views/LineChartView';
 import ListView from './views/ListView';
 import CardView from './views/CardView';
+import MoneyDetailCards from './views/MoneyDetailCards';
 
 interface Props {
   stats: ComputedStats[];
@@ -17,6 +20,8 @@ interface Props {
   tableDraw: number;
   onOpenHistory: (filter?: { playerId?: string; metric?: string }) => void;
   sessions: TableSession[];
+  roundsMoney: RoundMoney[];
+  cumulativeMoney: Record<string, number>;
 }
 
 const METRICS: { key: MetricKey; label: string }[] = [
@@ -28,6 +33,7 @@ const METRICS: { key: MetricKey; label: string }[] = [
   { key: 'critical', label: '爆擊' },
   { key: 'beCritical', label: '被爆' },
   { key: 'drawRate', label: '流局' },
+  { key: 'money', label: '金額' },
 ];
 
 const VIEW_MODES = [
@@ -54,6 +60,8 @@ export default function Dashboard({
   onUpdatePrefs,
   tableDraw,
   onOpenHistory,
+  roundsMoney,
+  cumulativeMoney,
 }: Props) {
   const [showSettings, setShowSettings] = useState(false);
   const scope = prefs.scope;
@@ -214,11 +222,17 @@ export default function Dashboard({
           </div>
 
           <div className="chart-area">
-            {prefs.dashboardMode === 'bar' && (
+            {prefs.dashboardMode === 'bar' && prefs.selectedMetric !== 'money' && (
               <BarChartView
                 stats={statsWithNames}
                 metric={prefs.selectedMetric}
                 onOpenHistory={onOpenHistory}
+              />
+            )}
+            {prefs.dashboardMode === 'bar' && prefs.selectedMetric === 'money' && (
+              <MoneyBarChart
+                cumulativeMoney={cumulativeMoney}
+                playerIds={prefs.selectedPlayerIds.length > 0 ? prefs.selectedPlayerIds : [...activeSession.playerIds]}
               />
             )}
             {prefs.dashboardMode === 'line' && (
@@ -233,9 +247,13 @@ export default function Dashboard({
               <ListView stats={statsWithNames} onOpenHistory={onOpenHistory} />
             )}
             {prefs.dashboardMode === 'card' && (
-              <CardView stats={statsWithNames} onOpenHistory={onOpenHistory} />
+              <CardView stats={statsWithNames} onOpenHistory={onOpenHistory} cumulativeMoney={cumulativeMoney} />
             )}
           </div>
+
+          {prefs.selectedMetric === 'money' && roundsMoney.length > 0 && (
+            <MoneyDetailCards roundsMoney={roundsMoney} playerIds={[...activeSession.playerIds]} />
+          )}
         </>
       )}
     </div>
