@@ -145,33 +145,17 @@ export default function Dashboard({
       </div>
 
       {(prefs.dashboardMode === 'bar' || prefs.dashboardMode === 'line') && (
-        <>
-          <div className="metric-bar">
-            {METRICS.map(m => (
-              <button
-                key={m.key}
-                className={`metric-btn ${prefs.selectedMetric === m.key ? 'active' : ''}`}
-                onClick={() => onUpdatePrefs({ selectedMetric: m.key })}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
-          <div className="display-mode-bar">
+        <div className="metric-bar">
+          {METRICS.map(m => (
             <button
-              className={`display-mode-btn ${prefs.displayMode === 'rate' ? 'active' : ''}`}
-              onClick={() => onUpdatePrefs({ displayMode: 'rate' })}
+              key={m.key}
+              className={`metric-btn ${prefs.selectedMetric === m.key ? 'active' : ''}`}
+              onClick={() => onUpdatePrefs({ selectedMetric: m.key })}
             >
-              比例
+              {m.label}
             </button>
-            <button
-              className={`display-mode-btn ${prefs.displayMode === 'count' ? 'active' : ''}`}
-              onClick={() => onUpdatePrefs({ displayMode: 'count' })}
-            >
-              次數
-            </button>
-          </div>
-        </>
+          ))}
+        </div>
       )}
 
       <div className="settings-toggle">
@@ -234,7 +218,6 @@ export default function Dashboard({
               <BarChartView
                 stats={statsWithNames}
                 metric={prefs.selectedMetric}
-                displayMode={prefs.displayMode}
                 onOpenHistory={onOpenHistory}
               />
             )}

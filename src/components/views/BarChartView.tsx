@@ -1,25 +1,22 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import type { ComputedStats, MetricKey } from '../../types';
-import { getRateValue, getMetricLabel, formatRate, getMetricNumerator } from '../../utils/stats';
+import { getMetricLabel, getMetricNumerator } from '../../utils/stats';
 
 const COLORS = ['#4F86C6', '#E07A5F', '#81B29A', '#F2CC8F', '#3D405B', '#E36414'];
 
 interface Props {
   stats: ComputedStats[];
   metric: MetricKey;
-  displayMode: 'rate' | 'count';
   onOpenHistory: (filter?: { playerId?: string; metric?: string }) => void;
 }
 
-export default function BarChartView({ stats, metric, displayMode, onOpenHistory }: Props) {
-  const isCount = displayMode === 'count';
-
+export default function BarChartView({ stats, metric, onOpenHistory }: Props) {
   const data = stats.map(s => {
     const numerator = getMetricNumerator(s, metric);
     const denominator = (metric === 'overallWin' || metric === 'drawRate') ? s.total : s.effective;
     return {
       name: s.displayName,
-      value: isCount ? numerator : getRateValue(s, metric),
+      value: numerator,
       numerator,
       denominator,
       playerId: s.playerId,
@@ -28,21 +25,20 @@ export default function BarChartView({ stats, metric, displayMode, onOpenHistory
 
   return (
     <div className="chart-container">
-      <h4>{getMetricLabel(metric)}</h4>
+      <h4>{getMetricLabel(metric)}（次數）</h4>
       <ResponsiveContainer width="100%" height={280}>
         <BarChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="name" />
           <YAxis
-            tickFormatter={isCount ? (v => `${v}`) : (v => `${(v * 100).toFixed(0)}%`)}
+            tickFormatter={v => `${v}`}
             domain={[0, 'auto']}
-            allowDecimals={!isCount}
+            allowDecimals={false}
           />
           <Tooltip
             formatter={(value: unknown) => {
               if (value === null || value === undefined) return ['—', getMetricLabel(metric)];
-              if (isCount) return [`${value} 次`, getMetricLabel(metric)];
-              return [formatRate(value as number), getMetricLabel(metric)];
+              return [`${value} 次`, getMetricLabel(metric)];
             }}
             labelFormatter={(label, payload) => {
               if (payload && payload[0]) {
