@@ -11,3 +11,7 @@ createRoot(document.getElementById('root')!).render(
     </ToastProvider>
   </StrictMode>,
 )
+
+if (navigator.storage?.persist) {
+  navigator.storage.persist().catch(() => { /* 瀏覽器不支援或拒絕時維持原行為 */ })
+}
