@@ -30,46 +30,46 @@ export default function CardView({ stats, onOpenHistory, cumulativeMoney }: Prop
             </span>
           </div>
           <div className="card-stats">
-            <div className="card-stat" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'selfDraw' })}>
+            <button type="button" className="card-stat" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'selfDraw' })}>
               <span className="stat-label">自摸率</span>
               <span className="stat-value">{formatRate(s.selfDrawRate)}</span>
               <span className="stat-detail">{s.selfDraws}/{s.effective}</span>
-            </div>
-            <div className="card-stat" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'win' })}>
+            </button>
+            <button type="button" className="card-stat" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'win' })}>
               <span className="stat-label">胡牌率</span>
               <span className="stat-value">{formatRate(s.winRate)}</span>
               <span className="stat-detail">{s.selfDraws + s.ronWins}/{s.effective}</span>
-            </div>
-            <div className="card-stat" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'overallWin' })}>
+            </button>
+            <button type="button" className="card-stat" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'overallWin' })}>
               <span className="stat-label">勝率</span>
               <span className="stat-value">{formatRate(s.overallWinRate)}</span>
               <span className="stat-detail">{s.selfDraws + s.ronWins}/{s.total}</span>
-            </div>
-            <div className="card-stat" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'discard' })}>
+            </button>
+            <button type="button" className="card-stat" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'discard' })}>
               <span className="stat-label">放槍率</span>
               <span className="stat-value">{formatRate(s.discardRate)}</span>
               <span className="stat-detail">{s.discards}/{s.effective}</span>
-            </div>
-            <div className="card-stat" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'beDrawn' })}>
+            </button>
+            <button type="button" className="card-stat" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'beDrawn' })}>
               <span className="stat-label">被摸率</span>
               <span className="stat-value">{formatRate(s.beDrawnRate)}</span>
               <span className="stat-detail">{s.beDrawn}/{s.effective}</span>
-            </div>
-            <div className="card-stat" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'critical' })}>
+            </button>
+            <button type="button" className="card-stat" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'critical' })}>
               <span className="stat-label">爆擊率</span>
               <span className="stat-value">{formatRate(s.criticalRate)}</span>
               <span className="stat-detail">{s.criticals}/{s.effective}</span>
-            </div>
-            <div className="card-stat" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'beCritical' })}>
+            </button>
+            <button type="button" className="card-stat" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'beCritical' })}>
               <span className="stat-label">被爆率</span>
               <span className="stat-value">{formatRate(s.beCriticalRate)}</span>
               <span className="stat-detail">{s.beCriticals}/{s.effective}</span>
-            </div>
-            <div className="card-stat" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'drawRate' })}>
+            </button>
+            <button type="button" className="card-stat" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'drawRate' })}>
               <span className="stat-label">流局率</span>
               <span className="stat-value">{formatRate(s.drawRate)}</span>
               <span className="stat-detail">{s.draws}/{s.total}</span>
-            </div>
+            </button>
           </div>
           {s.criticalInWinRate !== null && (
             <div className="card-extra">

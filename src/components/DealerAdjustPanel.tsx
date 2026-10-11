@@ -120,10 +120,10 @@ export default function DealerAdjustPanel({ session, dealerState, onApply }: Pro
             <span className="seat-drag-wind">{WINDS[i]}</span>
             <span className="seat-drag-name">{getPlayerName(pid)}</span>
             <div className="seat-drag-actions">
-              {i > 0 && <button className="btn-icon-sm" onClick={() => moveUp(i)}>↑</button>}
-              {i < 3 && <button className="btn-icon-sm" onClick={() => moveUp(i + 1)}>↓</button>}
+              {i > 0 && <button className="btn-icon-sm" onClick={() => moveUp(i)} aria-label={`${getPlayerName(pid)} 上移`}><span aria-hidden="true">↑</span></button>}
+              {i < 3 && <button className="btn-icon-sm" onClick={() => moveUp(i + 1)} aria-label={`${getPlayerName(pid)} 下移`}><span aria-hidden="true">↓</span></button>}
             </div>
-            <span className="seat-drag-handle">⠿</span>
+            <span className="seat-drag-handle" role="img" aria-label="拖曳排序">⠿</span>
           </div>
         ))}
       </div>
@@ -146,6 +146,7 @@ export default function DealerAdjustPanel({ session, dealerState, onApply }: Pro
         <button
           className="tai-adjust"
           onClick={() => setConsecutive(Math.max(0, consecutive - 1))}
+          aria-label="連莊數減一"
         >
           −
         </button>
@@ -153,6 +154,7 @@ export default function DealerAdjustPanel({ session, dealerState, onApply }: Pro
         <button
           className="tai-adjust"
           onClick={() => setConsecutive(consecutive + 1)}
+          aria-label="連莊數加一"
         >
           +
         </button>

@@ -48,22 +48,25 @@ export default function ListView({ stats, onOpenHistory }: Props) {
     return sortAsc ? ' ↑' : ' ↓';
   };
 
+  const ariaSort = (key: SortKey) =>
+    key !== sortKey ? 'none' : sortAsc ? 'ascending' : 'descending';
+
   return (
     <div className="list-view-wrapper">
       <div className="list-view">
         <table>
           <thead>
             <tr>
-              <th className="sticky-col" onClick={() => handleSort('name')}>玩家{sortIcon('name')}</th>
-              <th onClick={() => handleSort('selfDraw')}>自摸率{sortIcon('selfDraw')}</th>
-              <th onClick={() => handleSort('win')}>胡牌率{sortIcon('win')}</th>
-              <th onClick={() => handleSort('overallWin')}>勝率{sortIcon('overallWin')}</th>
-              <th onClick={() => handleSort('discard')}>放槍率{sortIcon('discard')}</th>
-              <th onClick={() => handleSort('beDrawn')}>被摸率{sortIcon('beDrawn')}</th>
-              <th onClick={() => handleSort('critical')}>爆擊率{sortIcon('critical')}</th>
-              <th onClick={() => handleSort('beCritical')}>被爆率{sortIcon('beCritical')}</th>
-              <th onClick={() => handleSort('drawRate')}>流局率{sortIcon('drawRate')}</th>
-              <th onClick={() => handleSort('total')}>局數{sortIcon('total')}</th>
+              <th className="sticky-col" aria-sort={ariaSort('name')}><button type="button" className="th-btn" onClick={() => handleSort('name')}>玩家{sortIcon('name')}</button></th>
+              <th aria-sort={ariaSort('selfDraw')}><button type="button" className="th-btn" onClick={() => handleSort('selfDraw')}>自摸率{sortIcon('selfDraw')}</button></th>
+              <th aria-sort={ariaSort('win')}><button type="button" className="th-btn" onClick={() => handleSort('win')}>胡牌率{sortIcon('win')}</button></th>
+              <th aria-sort={ariaSort('overallWin')}><button type="button" className="th-btn" onClick={() => handleSort('overallWin')}>勝率{sortIcon('overallWin')}</button></th>
+              <th aria-sort={ariaSort('discard')}><button type="button" className="th-btn" onClick={() => handleSort('discard')}>放槍率{sortIcon('discard')}</button></th>
+              <th aria-sort={ariaSort('beDrawn')}><button type="button" className="th-btn" onClick={() => handleSort('beDrawn')}>被摸率{sortIcon('beDrawn')}</button></th>
+              <th aria-sort={ariaSort('critical')}><button type="button" className="th-btn" onClick={() => handleSort('critical')}>爆擊率{sortIcon('critical')}</button></th>
+              <th aria-sort={ariaSort('beCritical')}><button type="button" className="th-btn" onClick={() => handleSort('beCritical')}>被爆率{sortIcon('beCritical')}</button></th>
+              <th aria-sort={ariaSort('drawRate')}><button type="button" className="th-btn" onClick={() => handleSort('drawRate')}>流局率{sortIcon('drawRate')}</button></th>
+              <th aria-sort={ariaSort('total')}><button type="button" className="th-btn" onClick={() => handleSort('total')}>局數{sortIcon('total')}</button></th>
             </tr>
           </thead>
           <tbody>
@@ -73,14 +76,14 @@ export default function ListView({ stats, onOpenHistory }: Props) {
                   {s.displayName}
                   {isLowSample(s) && <span className="low-sample-badge">樣本少</span>}
                 </td>
-                <td onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'selfDraw' })} className="clickable">{formatRate(s.selfDrawRate)}</td>
-                <td onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'win' })} className="clickable">{formatRate(s.winRate)}</td>
-                <td onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'overallWin' })} className="clickable">{formatRate(s.overallWinRate)}</td>
-                <td onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'discard' })} className="clickable">{formatRate(s.discardRate)}</td>
-                <td onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'beDrawn' })} className="clickable">{formatRate(s.beDrawnRate)}</td>
-                <td onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'critical' })} className="clickable">{formatRate(s.criticalRate)}</td>
-                <td onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'beCritical' })} className="clickable">{formatRate(s.beCriticalRate)}</td>
-                <td onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'drawRate' })} className="clickable">{formatRate(s.drawRate)}</td>
+                <td className="clickable"><button type="button" className="cell-btn" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'selfDraw' })}>{formatRate(s.selfDrawRate)}</button></td>
+                <td className="clickable"><button type="button" className="cell-btn" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'win' })}>{formatRate(s.winRate)}</button></td>
+                <td className="clickable"><button type="button" className="cell-btn" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'overallWin' })}>{formatRate(s.overallWinRate)}</button></td>
+                <td className="clickable"><button type="button" className="cell-btn" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'discard' })}>{formatRate(s.discardRate)}</button></td>
+                <td className="clickable"><button type="button" className="cell-btn" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'beDrawn' })}>{formatRate(s.beDrawnRate)}</button></td>
+                <td className="clickable"><button type="button" className="cell-btn" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'critical' })}>{formatRate(s.criticalRate)}</button></td>
+                <td className="clickable"><button type="button" className="cell-btn" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'beCritical' })}>{formatRate(s.beCriticalRate)}</button></td>
+                <td className="clickable"><button type="button" className="cell-btn" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'drawRate' })}>{formatRate(s.drawRate)}</button></td>
                 <td>{s.total}（{s.effective}/{s.draws}）</td>
               </tr>
             ))}

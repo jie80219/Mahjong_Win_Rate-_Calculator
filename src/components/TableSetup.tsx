@@ -89,7 +89,18 @@ export default function TableSetup({ sessions, onStartTable, onResumeSession }: 
             <div
               key={pid}
               className={`seat-slot filled ${dealerIndex === i ? 'dealer' : ''}`}
+              role="button"
+              tabIndex={0}
+              aria-pressed={dealerIndex === i}
+              aria-label={`選 ${getPlayerName(pid)} 為莊家`}
               onClick={() => setDealerIndex(i)}
+              onKeyDown={e => {
+                if (e.target !== e.currentTarget) return;
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setDealerIndex(i);
+                }
+              }}
             >
               <div className="seat-content">
                 <span>
@@ -97,8 +108,8 @@ export default function TableSetup({ sessions, onStartTable, onResumeSession }: 
                   {getPlayerName(pid)}
                 </span>
                 <div className="seat-actions">
-                  {i > 0 && <button className="btn-icon-sm" onClick={(e) => { e.stopPropagation(); seatMoveUp(i); }} title="上移">↑</button>}
-                  {i < 3 && <button className="btn-icon-sm" onClick={(e) => { e.stopPropagation(); seatMoveUp(i + 1); }} title="下移">↓</button>}
+                  {i > 0 && <button className="btn-icon-sm" onClick={(e) => { e.stopPropagation(); seatMoveUp(i); }} title="上移" aria-label="上移"><span aria-hidden="true">↑</span></button>}
+                  {i < 3 && <button className="btn-icon-sm" onClick={(e) => { e.stopPropagation(); seatMoveUp(i + 1); }} title="下移" aria-label="下移"><span aria-hidden="true">↓</span></button>}
                 </div>
               </div>
             </div>
@@ -154,9 +165,9 @@ export default function TableSetup({ sessions, onStartTable, onResumeSession }: 
               <div className="seat-content">
                 <span>{getPlayerName(selected[i])}</span>
                 <div className="seat-actions">
-                  {i > 0 && <button className="btn-icon-sm" onClick={() => moveUp(i)} title="上移">↑</button>}
-                  {i < selected.length - 1 && <button className="btn-icon-sm" onClick={() => moveUp(i + 1)} title="下移">↓</button>}
-                  <button className="btn-icon-sm" onClick={() => togglePlayer(selected[i])} title="移除">✕</button>
+                  {i > 0 && <button className="btn-icon-sm" onClick={() => moveUp(i)} title="上移" aria-label="上移"><span aria-hidden="true">↑</span></button>}
+                  {i < selected.length - 1 && <button className="btn-icon-sm" onClick={() => moveUp(i + 1)} title="下移" aria-label="下移"><span aria-hidden="true">↓</span></button>}
+                  <button className="btn-icon-sm" onClick={() => togglePlayer(selected[i])} title="移除" aria-label="移除"><span aria-hidden="true">✕</span></button>
                 </div>
               </div>
             ) : (

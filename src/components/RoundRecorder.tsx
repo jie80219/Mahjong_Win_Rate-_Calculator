@@ -190,9 +190,9 @@ export default function RoundRecorder({ tableSession, onSave, initialData, editM
           </div>
           {showCustom && (
             <div className="custom-tai">
-              <button className="tai-adjust" onClick={() => { const v = Math.max(10, customTai - 1); setCustomTai(v); setTai(v); }}>−</button>
+              <button className="tai-adjust" onClick={() => { const v = Math.max(10, customTai - 1); setCustomTai(v); setTai(v); }} aria-label="台數減一">−</button>
               <span className="custom-tai-value">{customTai}</span>
-              <button className="tai-adjust" onClick={() => { const v = customTai + 1; setCustomTai(v); setTai(v); }}>+</button>
+              <button className="tai-adjust" onClick={() => { const v = customTai + 1; setCustomTai(v); setTai(v); }} aria-label="台數加一">+</button>
             </div>
           )}
         </div>

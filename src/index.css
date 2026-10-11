@@ -1302,3 +1302,28 @@ button:disabled {
   color: var(--critical-text);
   white-space: nowrap;
 }
+
+/* 無障礙：鍵盤焦點與原生按鈕化的可點擊元素 */
+:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+button.card-stat { width: 100%; font: inherit; color: inherit; display: block; }
+.th-btn, .cell-btn {
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  padding: 0;
+  text-align: inherit;
+  white-space: inherit;
+}
+.th-btn { font-weight: inherit; }
+.cell-btn { padding: 10px 6px; margin: -10px -6px; width: calc(100% + 12px); }
+.sticky-col .th-btn { text-align: left; }
+
+/* 拖曳排序時避免頁面跟著捲動 */
+.seat-drag-item { touch-action: none; }
+
+/* iOS 聚焦輸入框時 font-size 小於 16px 會自動放大 */
+.app input, .app select, .app textarea { font-size: 16px; }
