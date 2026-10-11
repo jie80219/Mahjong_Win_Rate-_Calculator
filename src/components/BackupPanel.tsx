@@ -84,7 +84,11 @@ export default function BackupPanel({ onClose, onImported }: Props) {
   const handleClearAll = useCallback(async () => {
     await db.rounds.clear();
     await db.tableSessions.clear();
-    try { localStorage.clear(); } catch {}
+    try {
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('mahjong_'))
+        .forEach(k => localStorage.removeItem(k));
+    } catch { /* storage blocked */ }
     await onImported();
     setClearStage('idle');
     onClose();
