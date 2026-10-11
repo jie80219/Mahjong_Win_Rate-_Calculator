@@ -110,6 +110,7 @@ export default function Dashboard({
   }));
 
   const noData = totalRounds === 0;
+  const moneyShown = prefs.dashboardMode === 'card' || prefs.selectedMetric === 'money';
 
   return (
     <div className="dashboard">
@@ -220,6 +221,12 @@ export default function Dashboard({
           <div className="draw-summary">
             流局：{tableDraw} 局 ｜ 共 {totalRounds} 局（有效 {effectiveRounds} 局）
           </div>
+
+          {moneyShown && (scope === 'all' || prefs.dateRange.type !== 'all') && (
+            <div className="money-scope-note">
+              金額僅計算目前牌桌的全部牌局，不受「全部紀錄」與日期篩選影響
+            </div>
+          )}
 
           <div className="chart-area">
             {prefs.dashboardMode === 'bar' && prefs.selectedMetric !== 'money' && (

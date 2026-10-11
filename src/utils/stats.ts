@@ -1,43 +1,48 @@
 import type { Round, PlayerStats, ComputedStats, DateRange } from '../types';
-import { startOfDay, subDays, isWithinInterval, parseISO } from 'date-fns';
-import { toZonedTime } from 'date-fns-tz';
 
 const TZ = 'Asia/Taipei';
+const DAY_MS = 86400000;
 
-function toTaipeiDate(iso: string): Date {
-  return toZonedTime(parseISO(iso), TZ);
+const dayFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: TZ,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+// 以台北時區的 YYYY-MM-DD 字串比較日期，台北無日光節約時間，可直接用毫秒位移
+function taipeiDayKey(ms: number): string {
+  return dayFormatter.format(new Date(ms));
 }
 
 export function filterRoundsByDate(rounds: Round[], dateRange: DateRange): Round[] {
   if (dateRange.type === 'all') return rounds;
 
-  const now = toZonedTime(new Date(), TZ);
-  const todayStart = startOfDay(now);
-
-  let start: Date;
-  let end: Date = now;
+  const nowMs = Date.now();
+  let startKey = '';
+  let endKey = '9999-12-31';
 
   switch (dateRange.type) {
     case 'today':
-      start = todayStart;
+      startKey = taipeiDayKey(nowMs);
       break;
     case 'week':
-      start = subDays(todayStart, 6);
+      startKey = taipeiDayKey(nowMs - 6 * DAY_MS);
       break;
     case 'month':
-      start = subDays(todayStart, 29);
+      startKey = taipeiDayKey(nowMs - 29 * DAY_MS);
       break;
     case 'custom':
-      start = dateRange.start ? startOfDay(parseISO(dateRange.start)) : new Date(0);
-      end = dateRange.end ? new Date(parseISO(dateRange.end).getTime() + 86400000 - 1) : now;
+      startKey = dateRange.start || '';
+      endKey = dateRange.end || taipeiDayKey(nowMs);
       break;
     default:
       return rounds;
   }
 
   return rounds.filter(r => {
-    const d = toTaipeiDate(r.playedAt);
-    return isWithinInterval(d, { start, end });
+    const key = taipeiDayKey(new Date(r.playedAt).getTime());
+    return key >= startKey && key <= endKey;
   });
 }
 
@@ -162,6 +167,16 @@ export function getMetricNumerator(stats: ComputedStats, metric: string): number
   }
 }
 
+export function sortRoundsChronologically(rounds: Round[]): Round[] {
+  return [...rounds].sort((a, b) => {
+    const t = a.playedAt.localeCompare(b.playedAt);
+    if (t !== 0) return t;
+    const s = a.sequence - b.sequence;
+    if (s !== 0) return s;
+    return a.id.localeCompare(b.id);
+  });
+}
+
 export interface CumulativePoint {
   roundIndex: number;
   roundId: string;
@@ -177,13 +192,7 @@ export function computeCumulativeLine(
   metric: string,
   allTablePlayerIds: Map<string, string[]>
 ): CumulativePoint[] {
-  const sorted = [...rounds].sort((a, b) => {
-    const t = a.playedAt.localeCompare(b.playedAt);
-    if (t !== 0) return t;
-    const s = a.sequence - b.sequence;
-    if (s !== 0) return s;
-    return a.id.localeCompare(b.id);
-  });
+  const sorted = sortRoundsChronologically(rounds);
 
   const points: CumulativePoint[] = [];
   let num = 0;
