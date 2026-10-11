@@ -13,9 +13,35 @@ export interface DeletedRoundSnapshot {
   dealerOverrides: TableSession['dealerOverrides'];
 }
 
+export class SessionNotFoundError extends Error {
+  sessionId: string;
+  constructor(sessionId: string) {
+    super(`table session not found: ${sessionId}`);
+    this.sessionId = sessionId;
+  }
+}
+
 async function ordinalOf(round: Round): Promise<number> {
   const siblings = await db.rounds.where('tableSessionId').equals(round.tableSessionId).toArray();
   return sortSessionRounds(siblings, round.tableSessionId).findIndex(r => r.id === round.id);
+}
+
+export async function insertRound(data: Omit<Round, 'id' | 'createdAt' | 'updatedAt' | 'sequence'>): Promise<Round> {
+  // 牌桌可能已被匯入取代；不存在的牌桌不可寫入，避免孤立牌局
+  if (!(await db.tableSessions.get(data.tableSessionId))) throw new SessionNotFoundError(data.tableSessionId);
+  const existing = await db.rounds.where('tableSessionId').equals(data.tableSessionId).toArray();
+  const maxSeq = existing.reduce((max, r) => Math.max(max, r.sequence), 0);
+  const now = nowISO();
+  const round: Round = {
+    ...data,
+    id: generateId(),
+    sequence: maxSeq + 1,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await db.rounds.add(round);
+  await recomputeDealerFields(round.tableSessionId, existing.length);
+  return round;
 }
 
 export async function deleteRoundAndRecompute(id: string): Promise<DeletedRoundSnapshot | null> {
@@ -38,6 +64,7 @@ export async function deleteRoundAndRecompute(id: string): Promise<DeletedRoundS
 
 export async function restoreRoundAtOrdinal(snapshot: DeletedRoundSnapshot): Promise<void> {
   const { round, ordinal, dealerOverrides } = snapshot;
+  if (!(await db.tableSessions.get(round.tableSessionId))) return;
   // 刪除後 sequence 已重編為 1..n，第 ordinal 位的前後鄰居是 ordinal 與 ordinal+1，故以 ordinal+0.5 插入，再由 recompute 整理成整數
   await db.rounds.put({ ...round, sequence: ordinal + 0.5 });
   if (dealerOverrides) await db.tableSessions.update(round.tableSessionId, { dealerOverrides });
@@ -101,18 +128,7 @@ export function useRounds(tableSessionId: string | null) {
   useEffect(() => { refresh(); }, [refresh]);
 
   const addRound = useCallback(async (data: Omit<Round, 'id' | 'createdAt' | 'updatedAt' | 'sequence'>) => {
-    const existing = await db.rounds.where('tableSessionId').equals(data.tableSessionId).toArray();
-    const maxSeq = existing.reduce((max, r) => Math.max(max, r.sequence), 0);
-    const now = nowISO();
-    const round: Round = {
-      ...data,
-      id: generateId(),
-      sequence: maxSeq + 1,
-      createdAt: now,
-      updatedAt: now,
-    };
-    await db.rounds.add(round);
-    await recomputeDealerFields(round.tableSessionId, existing.length);
+    const round = await insertRound(data);
     await refresh();
     return round;
   }, [refresh]);

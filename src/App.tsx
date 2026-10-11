@@ -9,6 +9,7 @@ import { computeDealerState } from './utils/dealer';
 import { computeAllRoundsMoney, computeCumulativeMoney } from './utils/money';
 import { loadLastExport, isBackupStale } from './utils/backupReminder';
 import { useToast } from './components/toastContext';
+import { SessionNotFoundError } from './hooks/useDB';
 import type { DeletedRoundSnapshot } from './hooks/useDB';
 import TableSetup from './components/TableSetup';
 import RoundRecorder from './components/RoundRecorder';
@@ -109,11 +110,34 @@ export default function App() {
     await reloadActiveSession(round.tableSessionId);
   }, [deleteRound, refreshMap, reloadActiveSession, toast]);
 
+  // 目前牌桌／表單狀態失效時（例如匯入取代了全部資料）返回建桌
+  const resetToSetup = useCallback(() => {
+    setActiveSession(null);
+    setView('setup');
+    setShowHistory(false);
+    setHistoryFilter(null);
+    toast.dismiss('undo');
+    toast.dismiss('delete-undo');
+  }, [toast]);
+
+  const handleImported = useCallback(async () => {
+    resetToSetup();
+    await refreshAll();
+  }, [resetToSetup, refreshAll]);
+
   const handleSaveRound = useCallback(async (data: Omit<Round, 'id' | 'createdAt' | 'updatedAt' | 'sequence'>) => {
     const roundData = dealerState
       ? { ...data, dealerId: dealerState.dealerId, dealerConsecutive: dealerState.consecutive }
       : data;
-    const round = await addRound(roundData);
+    let round: Round;
+    try {
+      round = await addRound(roundData);
+    } catch (e) {
+      if (!(e instanceof SessionNotFoundError)) throw e;
+      resetToSetup();
+      toast.show({ message: '此牌桌已不存在（資料可能已被匯入取代），請重新建桌', kind: 'error', duration: 5000 });
+      return;
+    }
     await refreshMap();
     toast.show({
       key: 'undo',
@@ -122,7 +146,7 @@ export default function App() {
       onAction: () => { void handleUndo(round.id); },
       duration: 5000,
     });
-  }, [addRound, refreshMap, dealerState, toast, handleUndo]);
+  }, [addRound, refreshMap, dealerState, toast, handleUndo, resetToSetup]);
 
   const handleEditRound = useCallback(async (id: string, data: Partial<Round>) => {
     await updateRound(id, data);
@@ -300,7 +324,7 @@ export default function App() {
       {showBackup && (
         <BackupPanel
           onClose={() => setShowBackup(false)}
-          onImported={refreshAll}
+          onImported={handleImported}
           onExported={setLastExport}
         />
       )}
