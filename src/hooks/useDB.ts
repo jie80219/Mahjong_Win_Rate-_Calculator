@@ -63,12 +63,13 @@ export function useRounds(tableSessionId: string | null) {
   const addRound = useCallback(async (data: Omit<Round, 'id' | 'createdAt' | 'updatedAt' | 'sequence'>) => {
     const existing = await db.rounds.where('tableSessionId').equals(data.tableSessionId).toArray();
     const maxSeq = existing.reduce((max, r) => Math.max(max, r.sequence), 0);
+    const now = nowISO();
     const round: Round = {
       ...data,
       id: generateId(),
       sequence: maxSeq + 1,
-      createdAt: nowISO(),
-      updatedAt: nowISO(),
+      createdAt: now,
+      updatedAt: now,
     };
     await db.rounds.add(round);
     await refresh();
