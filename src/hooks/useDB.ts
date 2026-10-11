@@ -3,6 +3,18 @@ import { db } from '../db';
 import type { TableSession, Round } from '../types';
 import { generateId, nowISO } from '../utils/id';
 import { saveLastTable } from '../utils/preferences';
+import { sortSessionRounds } from '../utils/dealer';
+import { recomputeDealerFields } from '../db/recompute';
+
+export interface DeletedRoundSnapshot {
+  round: Round;
+  dealerOverrides: TableSession['dealerOverrides'];
+}
+
+async function ordinalOf(round: Round): Promise<number> {
+  const siblings = await db.rounds.where('tableSessionId').equals(round.tableSessionId).toArray();
+  return sortSessionRounds(siblings, round.tableSessionId).findIndex(r => r.id === round.id);
+}
 
 export function useTableSessions() {
   const [sessions, setSessions] = useState<TableSession[]>([]);
@@ -72,21 +84,46 @@ export function useRounds(tableSessionId: string | null) {
       updatedAt: now,
     };
     await db.rounds.add(round);
+    await recomputeDealerFields(round.tableSessionId, existing.length);
     await refresh();
     return round;
   }, [refresh]);
 
   const updateRound = useCallback(async (id: string, data: Partial<Round>) => {
+    const round = await db.rounds.get(id);
     await db.rounds.update(id, { ...data, updatedAt: nowISO() });
+    if (round) await recomputeDealerFields(round.tableSessionId, Math.max(await ordinalOf(round), 0));
     await refresh();
   }, [refresh]);
 
-  const deleteRound = useCallback(async (id: string) => {
+  const deleteRound = useCallback(async (id: string): Promise<DeletedRoundSnapshot | null> => {
+    const round = await db.rounds.get(id);
+    if (!round) return null;
+    const session = await db.tableSessions.get(round.tableSessionId);
+    const ordinal = await ordinalOf(round);
+    const snapshot: DeletedRoundSnapshot = { round, dealerOverrides: session?.dealerOverrides };
+
     await db.rounds.delete(id);
+    if (session?.dealerOverrides) {
+      await db.tableSessions.update(session.id, {
+        dealerOverrides: session.dealerOverrides.map(o =>
+          o.afterSequence > ordinal ? { ...o, afterSequence: o.afterSequence - 1 } : o),
+      });
+    }
+    await recomputeDealerFields(round.tableSessionId, Math.max(ordinal, 0));
+    await refresh();
+    return snapshot;
+  }, [refresh]);
+
+  const restoreRound = useCallback(async (snapshot: DeletedRoundSnapshot) => {
+    const { round, dealerOverrides } = snapshot;
+    await db.rounds.put(round);
+    if (dealerOverrides) await db.tableSessions.update(round.tableSessionId, { dealerOverrides });
+    await recomputeDealerFields(round.tableSessionId, Math.max(await ordinalOf(round), 0));
     await refresh();
   }, [refresh]);
 
-  return { rounds, allRounds, loading, refresh, addRound, updateRound, deleteRound };
+  return { rounds, allRounds, loading, refresh, addRound, updateRound, deleteRound, restoreRound };
 }
 
 export function useAllTablePlayerIds() {

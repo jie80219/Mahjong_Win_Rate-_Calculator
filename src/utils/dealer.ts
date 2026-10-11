@@ -2,16 +2,28 @@ import type { Round, TableSession, DealerState, WindName } from '../types';
 
 const WINDS: WindName[] = ['東', '南', '西', '北'];
 
-export function computeDealerState(
-  session: TableSession,
-  rounds: Round[],
-): DealerState | null {
+export function sortSessionRounds(rounds: Round[], sessionId: string): Round[] {
+  return rounds
+    .filter(r => r.tableSessionId === sessionId)
+    .sort((a, b) => a.sequence - b.sequence || a.createdAt.localeCompare(b.createdAt));
+}
+
+export interface RoundDealer {
+  dealerId: string;
+  consecutive: number;
+}
+
+interface DealerWalk {
+  perRound: RoundDealer[];
+  dealerIdx: number;
+  consecutive: number;
+  dealerRotations: number;
+}
+
+// override.afterSequence = 該調整發生時已存在的局數，與局號是否連續無關
+function walkDealer(session: TableSession, sorted: Round[]): DealerWalk | null {
   const seatOrder = session.seatOrder;
   if (!seatOrder || session.initialDealerIndex === undefined) return null;
-
-  const sorted = [...rounds]
-    .filter(r => r.tableSessionId === session.id)
-    .sort((a, b) => a.sequence - b.sequence);
 
   const overrides = (session.dealerOverrides ?? [])
     .slice()
@@ -20,44 +32,58 @@ export function computeDealerState(
   let dealerIdx = session.initialDealerIndex;
   let consecutive = 0;
   let dealerRotations = 0;
+  const perRound: RoundDealer[] = [];
 
-  for (const r of sorted) {
-    const override = overrides.find(o => o.afterSequence === r.sequence - 1);
+  sorted.forEach((r, i) => {
+    const override = overrides.find(o => o.afterSequence === i);
     if (override) {
       dealerIdx = override.dealerIndex;
       consecutive = override.consecutive;
-      dealerRotations = computeRotationsFromIndex(session.initialDealerIndex, dealerIdx, seatOrder.length);
+      dealerRotations = computeRotationsFromIndex(session.initialDealerIndex!, dealerIdx, seatOrder.length);
     }
 
     const dealerId = seatOrder[dealerIdx];
-    const dealerWins =
-      r.resultType === 'draw' ||
-      (r.winnerId === dealerId);
+    perRound.push({ dealerId, consecutive });
 
-    if (dealerWins) {
+    if (r.resultType === 'draw' || r.winnerId === dealerId) {
       consecutive++;
     } else {
       consecutive = 0;
       dealerIdx = (dealerIdx + 1) % 4;
       dealerRotations++;
     }
-  }
+  });
 
-  const lastOverride = overrides.find(o => o.afterSequence >= (sorted.length));
+  const lastOverride = overrides.find(o => o.afterSequence >= sorted.length);
   if (lastOverride) {
     dealerIdx = lastOverride.dealerIndex;
     consecutive = lastOverride.consecutive;
     dealerRotations = computeRotationsFromIndex(session.initialDealerIndex, dealerIdx, seatOrder.length);
   }
 
-  const fullCycles = Math.floor(dealerRotations / 4);
+  return { perRound, dealerIdx, consecutive, dealerRotations };
+}
+
+export function computeRoundDealers(session: TableSession, rounds: Round[]): RoundDealer[] | null {
+  const walk = walkDealer(session, sortSessionRounds(rounds, session.id));
+  return walk ? walk.perRound : null;
+}
+
+export function computeDealerState(
+  session: TableSession,
+  rounds: Round[],
+): DealerState | null {
+  const walk = walkDealer(session, sortSessionRounds(rounds, session.id));
+  if (!walk || !session.seatOrder) return null;
+
+  const fullCycles = Math.floor(walk.dealerRotations / 4);
   const windIndex = Math.min(fullCycles, 3);
 
   return {
-    dealerId: seatOrder[dealerIdx],
-    consecutive,
+    dealerId: session.seatOrder[walk.dealerIdx],
+    consecutive: walk.consecutive,
     wind: WINDS[windIndex],
-    windRound: (dealerRotations % 4) + 1,
+    windRound: (walk.dealerRotations % 4) + 1,
   };
 }
 
