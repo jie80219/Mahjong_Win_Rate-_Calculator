@@ -1,6 +1,6 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import type { Round, MetricKey } from '../../types';
-import { computeCumulativeLine, getMetricLabel, formatRate } from '../../utils/stats';
+import { computeCumulativeLine, getMetricLabel, formatRate, sortRoundsChronologically } from '../../utils/stats';
 import { getPlayerName } from '../../db/players';
 
 const COLORS = ['#4F86C6', '#E07A5F', '#81B29A', '#F2CC8F', '#3D405B', '#E36414'];
@@ -13,28 +13,24 @@ interface Props {
 }
 
 export default function LineChartView({ rounds, playerIds, metric, tablePlayerMap }: Props) {
-  const lines = playerIds.map(pid =>
-    computeCumulativeLine(rounds, pid, metric, tablePlayerMap)
-  );
+  const orderedRounds = sortRoundsChronologically(rounds);
+  const data: Record<string, unknown>[] = orderedRounds.map((_, i) => ({ index: i + 1 }));
 
-  const maxLen = Math.max(...lines.map(l => l.length), 0);
-  const data: Record<string, unknown>[] = [];
-
-  for (let i = 0; i < maxLen; i++) {
-    const point: Record<string, unknown> = { index: i + 1 };
-    for (let j = 0; j < playerIds.length; j++) {
-      const pid = playerIds[j];
-      const pName = getPlayerName(pid);
-      const line = lines[j];
-      const lp = line[i];
-      if (lp) {
-        point[pName] = lp.value;
-        point[`${pName}_n`] = lp.numerator;
-        point[`${pName}_d`] = lp.denominator;
-      }
-    }
-    data.push(point);
-  }
+  playerIds.forEach(pid => {
+    const pName = getPlayerName(pid);
+    const pointByRound = new Map(
+      computeCumulativeLine(rounds, pid, metric, tablePlayerMap).map(p => [p.roundId, p]),
+    );
+    let last: { value: number | null; numerator: number; denominator: number } | null = null;
+    orderedRounds.forEach((r, i) => {
+      const point = pointByRound.get(r.id) ?? last;
+      if (!point) return;
+      last = point;
+      data[i][pName] = point.value;
+      data[i][`${pName}_n`] = point.numerator;
+      data[i][`${pName}_d`] = point.denominator;
+    });
+  });
 
   return (
     <div className="chart-container">
@@ -45,6 +41,7 @@ export default function LineChartView({ rounds, playerIds, metric, tablePlayerMa
           <XAxis dataKey="index" label={{ value: '局', position: 'insideBottomRight', offset: -5 }} />
           <YAxis tickFormatter={v => `${(v * 100).toFixed(0)}%`} domain={[0, 'auto']} />
           <Tooltip
+            labelFormatter={label => `第 ${label} 局`}
             formatter={(value: unknown, name: unknown) => {
               if (value === null || value === undefined) return ['—', String(name)];
               return [formatRate(value as number), String(name)];
