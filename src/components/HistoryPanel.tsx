@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import type { Round, TableSession } from '../types';
 import { getPlayerName } from '../db/players';
+import { getMetricLabel } from '../utils/stats';
 import RoundRecorder from './RoundRecorder';
 
 interface Props {
@@ -26,17 +27,25 @@ function roundSummary(r: Round): string {
   return `${winner}胡牌，${discarder}放槍 ${r.tai} 台${isCritical ? ' 爆擊' : ''}`;
 }
 
-function matchesFilter(r: Round, filter: { playerId?: string; metric?: string } | null): boolean {
+function matchesFilter(
+  r: Round,
+  filter: { playerId?: string; metric?: string } | null,
+  tablePlayerMap: Map<string, string[]>,
+): boolean {
   if (!filter) return true;
   const { playerId, metric } = filter;
   if (!playerId) return true;
 
+  if (!tablePlayerMap.get(r.tableSessionId)?.includes(playerId)) return false;
+
+  if (metric === 'drawRate') return r.resultType === 'draw';
   if (r.resultType === 'draw') return false;
 
   switch (metric) {
     case 'selfDraw':
       return r.resultType === 'selfDraw' && r.winnerId === playerId;
     case 'win':
+    case 'overallWin':
       return r.winnerId === playerId;
     case 'discard':
       return r.resultType === 'discardWin' && r.discarderId === playerId;
@@ -51,7 +60,7 @@ function matchesFilter(r: Round, filter: { playerId?: string; metric?: string } 
   }
 }
 
-export default function HistoryPanel({ rounds, tableSession, sessions, filter, onEdit, onDelete, onClose }: Props) {
+export default function HistoryPanel({ rounds, tableSession, sessions, filter, onEdit, onDelete, onClose, tablePlayerMap }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteInput, setDeleteInput] = useState('');
@@ -59,10 +68,10 @@ export default function HistoryPanel({ rounds, tableSession, sessions, filter, o
   const filtered = useMemo(() => {
     let list = [...rounds];
     if (filter) {
-      list = list.filter(r => matchesFilter(r, filter));
+      list = list.filter(r => matchesFilter(r, filter, tablePlayerMap));
     }
     return list.sort((a, b) => b.playedAt.localeCompare(a.playedAt));
-  }, [rounds, filter]);
+  }, [rounds, filter, tablePlayerMap]);
 
   const editingRound = editingId ? rounds.find(r => r.id === editingId) : null;
   const editSession = editingRound
@@ -86,7 +95,7 @@ export default function HistoryPanel({ rounds, tableSession, sessions, filter, o
   };
 
   const filterDesc = filter
-    ? `篩選：${filter.playerId ? getPlayerName(filter.playerId) : ''}${filter.metric ? ` · ${filter.metric}` : ''}`
+    ? `篩選：${filter.playerId ? getPlayerName(filter.playerId) : ''}${filter.metric ? ` · ${getMetricLabel(filter.metric)}` : ''}`
     : '';
 
   return (
