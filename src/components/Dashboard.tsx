@@ -1,13 +1,14 @@
-import { useState, useCallback } from 'react';
+import { lazy, Suspense, useState, useCallback } from 'react';
 import type { ComputedStats, Preferences, MetricKey, Round, TableSession } from '../types';
 import type { RoundMoney } from '../utils/money';
 import { PLAYERS, getPlayerName } from '../db/players';
-import BarChartView from './views/BarChartView';
-import MoneyBarChart from './views/MoneyBarChart';
-import LineChartView from './views/LineChartView';
 import ListView from './views/ListView';
 import CardView from './views/CardView';
 import MoneyDetailCards from './views/MoneyDetailCards';
+
+const BarChartView = lazy(() => import('./views/BarChartView'));
+const MoneyBarChart = lazy(() => import('./views/MoneyBarChart'));
+const LineChartView = lazy(() => import('./views/LineChartView'));
 
 interface Props {
   stats: ComputedStats[];
@@ -229,6 +230,7 @@ export default function Dashboard({
           )}
 
           <div className="chart-area">
+            <Suspense fallback={<div className="no-data"><p>圖表載入中…</p></div>}>
             {prefs.dashboardMode === 'bar' && prefs.selectedMetric !== 'money' && (
               <BarChartView
                 stats={statsWithNames}
@@ -250,6 +252,7 @@ export default function Dashboard({
                 tablePlayerMap={tablePlayerMap}
               />
             )}
+            </Suspense>
             {prefs.dashboardMode === 'list' && (
               <ListView stats={statsWithNames} onOpenHistory={onOpenHistory} />
             )}
