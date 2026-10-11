@@ -45,24 +45,25 @@ const res = await page.evaluate(async () => {
   };
   for (const [name, [seqs, ov]] of Object.entries(cases)) {
     const sid = 's-' + name;
-    await seed(sid, seqs, ov);
-    // 直接寫回有空號的 sequence（recompute 會正規化，因此用 update 再還原空號，模擬舊資料）
-    for (let i = 0; i < seqs.length; i++) await db.rounds.update(`${sid}-r${i}`, { sequence: seqs[i] });
-    const base0 = await snap(sid);
     for (let i = 0; i < seqs.length; i++) {
-      const before = await snap(sid);
+      // 每次 delete 前重新 seed 原始資料，並把 sequence 還原成空號狀態（recompute 會正規化，故事後再 update）
+      await db.rounds.where('tableSessionId').equals(sid).delete();
+      await seed(sid, seqs, ov);
+      for (let j = 0; j < seqs.length; j++) await db.rounds.update(`${sid}-r${j}`, { sequence: seqs[j] });
+      const before = JSON.parse(await snap(sid));
       const s = await deleteRoundAndRecompute(`${sid}-r${i}`);
       await restoreRoundAtOrdinal(s);
-      const after = await snap(sid);
-      const a = JSON.parse(after), bb = JSON.parse(before);
-      // 第一次 delete/restore 後 sequence 會被正規化為 1..n，其餘欄位須與原本完全一致
-      const diff = ['order','dealer','money','overrides','updated'].filter(k => JSON.stringify(a[k]) !== JSON.stringify(bb[k])); const same = ['order', 'dealer', 'money', 'overrides', 'updated'].every(k => JSON.stringify(a[k]) === JSON.stringify(bb[k]));
-      const seqOk = JSON.stringify(a.seq) === JSON.stringify(a.seq.map((_, j) => j + 1));
-      out.push({ diff, name, deleted: i, ordinal: s.ordinal, same, seqOk, order: a.order.map(x => x.split('-r')[1]).join('') });
+      const after = JSON.parse(await snap(sid));
+      // sequence 會被正規化為 1..n，其餘欄位（順序、莊家、金額、override、updatedAt）須與刪除前完全一致
+      const diff = ['order', 'dealer', 'money', 'overrides', 'updated'].filter(k => JSON.stringify(after[k]) !== JSON.stringify(before[k]));
+      const seqOk = JSON.stringify(after.seq) === JSON.stringify(after.seq.map((_, j) => j + 1));
+      out.push({ name, deleted: i, ordinal: s.ordinal, same: diff.length === 0, diff, seqOk, order: after.order.map(x => x.split('-r')[1]).join('') });
     }
   }
   return out;
 });
 console.log(res.map(r => JSON.stringify(r)).join('\n'));
-console.log('ALL OK:', res.every(r => r.same && r.seqOk), 'pageerrors:', errs);
+const pass = res.filter(r => r.same && r.seqOk).length;
+console.log(`PASS ${pass}/${res.length}`, 'pageerrors:', errs);
+process.exitCode = pass === res.length && !errs.length ? 0 : 1;
 await b.close();
