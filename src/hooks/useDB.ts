@@ -27,21 +27,23 @@ async function ordinalOf(round: Round): Promise<number> {
 }
 
 export async function insertRound(data: Omit<Round, 'id' | 'createdAt' | 'updatedAt' | 'sequence'>): Promise<Round> {
-  // 牌桌可能已被匯入取代；不存在的牌桌不可寫入，避免孤立牌局
-  if (!(await db.tableSessions.get(data.tableSessionId))) throw new SessionNotFoundError(data.tableSessionId);
-  const existing = await db.rounds.where('tableSessionId').equals(data.tableSessionId).toArray();
-  const maxSeq = existing.reduce((max, r) => Math.max(max, r.sequence), 0);
-  const now = nowISO();
-  const round: Round = {
-    ...data,
-    id: generateId(),
-    sequence: maxSeq + 1,
-    createdAt: now,
-    updatedAt: now,
-  };
-  await db.rounds.add(round);
-  await recomputeDealerFields(round.tableSessionId, existing.length);
-  return round;
+  // 檢查、寫入、重算同一個 transaction：避免與匯入（取代全部資料）並行時寫出孤立牌局
+  return db.transaction('rw', db.tableSessions, db.rounds, async () => {
+    if (!(await db.tableSessions.get(data.tableSessionId))) throw new SessionNotFoundError(data.tableSessionId);
+    const existing = await db.rounds.where('tableSessionId').equals(data.tableSessionId).toArray();
+    const maxSeq = existing.reduce((max, r) => Math.max(max, r.sequence), 0);
+    const now = nowISO();
+    const round: Round = {
+      ...data,
+      id: generateId(),
+      sequence: maxSeq + 1,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await db.rounds.add(round);
+    await recomputeDealerFields(round.tableSessionId, existing.length);
+    return round;
+  });
 }
 
 export async function deleteRoundAndRecompute(id: string): Promise<DeletedRoundSnapshot | null> {
@@ -64,11 +66,13 @@ export async function deleteRoundAndRecompute(id: string): Promise<DeletedRoundS
 
 export async function restoreRoundAtOrdinal(snapshot: DeletedRoundSnapshot): Promise<void> {
   const { round, ordinal, dealerOverrides } = snapshot;
-  if (!(await db.tableSessions.get(round.tableSessionId))) return;
-  // 刪除後 sequence 已重編為 1..n，第 ordinal 位的前後鄰居是 ordinal 與 ordinal+1，故以 ordinal+0.5 插入，再由 recompute 整理成整數
-  await db.rounds.put({ ...round, sequence: ordinal + 0.5 });
-  if (dealerOverrides) await db.tableSessions.update(round.tableSessionId, { dealerOverrides });
-  await recomputeDealerFields(round.tableSessionId, ordinal);
+  await db.transaction('rw', db.tableSessions, db.rounds, async () => {
+    if (!(await db.tableSessions.get(round.tableSessionId))) throw new SessionNotFoundError(round.tableSessionId);
+    // 刪除後 sequence 已重編為 1..n，第 ordinal 位的前後鄰居是 ordinal 與 ordinal+1，故以 ordinal+0.5 插入，再由 recompute 整理成整數
+    await db.rounds.put({ ...round, sequence: ordinal + 0.5 });
+    if (dealerOverrides) await db.tableSessions.update(round.tableSessionId, { dealerOverrides });
+    await recomputeDealerFields(round.tableSessionId, ordinal);
+  });
 }
 
 export function useTableSessions() {

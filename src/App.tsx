@@ -165,14 +165,21 @@ export default function App() {
       actionLabel: '復原',
       onAction: () => {
         void (async () => {
-          await restoreRound(snapshot);
+          try {
+            await restoreRound(snapshot);
+          } catch (e) {
+            if (!(e instanceof SessionNotFoundError)) throw e;
+            resetToSetup();
+            toast.show({ message: '此牌桌已不存在（資料可能已被匯入取代），無法復原，請重新建桌', kind: 'error', duration: 5000 });
+            return;
+          }
           await refreshMap();
           await reloadActiveSession(snapshot.round.tableSessionId);
         })();
       },
       duration: 5000,
     });
-  }, [deleteRound, restoreRound, refreshMap, reloadActiveSession, toast]);
+  }, [deleteRound, restoreRound, refreshMap, reloadActiveSession, toast, resetToSetup]);
 
   const handleOpenHistory = useCallback((filter?: { playerId?: string; metric?: string }) => {
     setHistoryFilter(filter ?? null);
