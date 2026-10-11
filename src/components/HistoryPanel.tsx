@@ -62,8 +62,6 @@ function matchesFilter(
 
 export default function HistoryPanel({ rounds, tableSession, sessions, filter, onEdit, onDelete, onClose, tablePlayerMap }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [deleteInput, setDeleteInput] = useState('');
 
   const filtered = useMemo(() => {
     let list = [...rounds];
@@ -89,11 +87,6 @@ export default function HistoryPanel({ rounds, tableSession, sessions, filter, o
     setEditingId(null);
   };
 
-  const handleDelete = async (id: string) => {
-    await onDelete(id);
-    setDeleteConfirm(null);
-  };
-
   const filterDesc = filter
     ? `篩選：${filter.playerId ? getPlayerName(filter.playerId) : ''}${filter.metric ? ` · ${getMetricLabel(filter.metric)}` : ''}`
     : '';
@@ -103,7 +96,7 @@ export default function HistoryPanel({ rounds, tableSession, sessions, filter, o
       <div className="panel">
         <div className="panel-header">
           <h3>牌局紀錄</h3>
-          <button className="btn-icon" onClick={onClose}>✕</button>
+          <button className="btn-icon" onClick={onClose} aria-label="關閉"><span aria-hidden="true">✕</span></button>
         </div>
         {filterDesc && <div className="filter-desc">{filterDesc}</div>}
 
@@ -135,32 +128,7 @@ export default function HistoryPanel({ rounds, tableSession, sessions, filter, o
                   </div>
                   <div className="history-actions">
                     <button className="btn-link" onClick={() => setEditingId(r.id)}>編輯</button>
-                    {deleteConfirm === r.id ? (
-                      <div className="delete-confirm-dialog">
-                        <p className="delete-confirm-hint">若要刪除紀錄請輸入「123」</p>
-                        <div className="delete-confirm-row">
-                          <input
-                            className="delete-confirm-input"
-                            type="text"
-                            inputMode="numeric"
-                            value={deleteInput}
-                            onChange={e => setDeleteInput(e.target.value)}
-                            placeholder="請輸入 123"
-                            autoFocus
-                          />
-                          <button
-                            className="btn-danger-sm"
-                            disabled={deleteInput !== '123'}
-                            onClick={() => handleDelete(r.id)}
-                          >
-                            確認刪除
-                          </button>
-                          <button className="btn-link" onClick={() => { setDeleteConfirm(null); setDeleteInput(''); }}>取消</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button className="btn-link btn-danger-text" onClick={() => { setDeleteConfirm(r.id); setDeleteInput(''); }}>刪除</button>
-                    )}
+                    <button className="btn-link btn-danger-text" onClick={() => onDelete(r.id)}>刪除</button>
                   </div>
                 </div>
               ))

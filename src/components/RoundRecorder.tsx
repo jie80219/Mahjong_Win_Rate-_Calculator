@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import type { TableSession, ResultType, Round } from '../types';
 import { getPlayerName } from '../db/players';
 import { nowISO } from '../utils/id';
+import { useToast } from './toastContext';
 
 interface Props {
   tableSession: TableSession;
@@ -22,6 +23,7 @@ export default function RoundRecorder({ tableSession, onSave, initialData, editM
   const [showCustom, setShowCustom] = useState(initialData?.tai !== null && initialData?.tai !== undefined && initialData.tai >= 10);
   const [saving, setSaving] = useState(false);
 
+  const toast = useToast();
   const players = tableSession.playerIds;
 
   const reset = useCallback(() => {
@@ -108,11 +110,11 @@ export default function RoundRecorder({ tableSession, onSave, initialData, editM
       });
       if (!editMode) reset();
     } catch {
-      alert('儲存失敗，請重試');
+      toast.show({ message: '儲存失敗，請重試', kind: 'error' });
     } finally {
       setSaving(false);
     }
-  }, [canSave, resultType, winnerId, discarderId, tai, tableSession.id, onSave, reset, editMode, initialData]);
+  }, [canSave, resultType, winnerId, discarderId, tai, tableSession.id, onSave, reset, editMode, initialData, toast]);
 
   return (
     <div className="round-recorder">

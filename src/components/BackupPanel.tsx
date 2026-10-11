@@ -1,15 +1,20 @@
 import { useState, useCallback, useRef } from 'react';
 import { exportData, exportHtml, validateImport, importData } from '../utils/backup';
 import { db } from '../db';
+import { markExported } from '../utils/backupReminder';
+import { useToast } from './toastContext';
 
 interface Props {
   onClose: () => void;
   onImported: () => Promise<void>;
+  onExported: (exportedAt: string) => void;
 }
 
 type ClearStage = 'idle' | 'stage1' | 'stage2';
 
-export default function BackupPanel({ onClose, onImported }: Props) {
+export default function BackupPanel({ onClose, onImported, onExported }: Props) {
+  const toast = useToast();
+  const [preImportBackedUp, setPreImportBackedUp] = useState(false);
   const [importPreview, setImportPreview] = useState<{ tableSessions: number; rounds: number; errors: string[] } | null>(null);
   const [importJson, setImportJson] = useState<string>('');
   const [importing, setImporting] = useState(false);
@@ -25,7 +30,9 @@ export default function BackupPanel({ onClose, onImported }: Props) {
     a.download = `mahjong_backup_${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-  }, []);
+    onExported(markExported());
+    toast.show({ message: '已匯出備份', kind: 'success' });
+  }, [onExported, toast]);
 
   const handleExportHtml = useCallback(async () => {
     const html = await exportHtml();
@@ -47,14 +54,12 @@ export default function BackupPanel({ onClose, onImported }: Props) {
       setImportJson(text);
       const { preview } = validateImport(text);
       setImportPreview(preview);
+      setPreImportBackedUp(false);
     };
     reader.readAsText(file);
   }, []);
 
-  const handleImport = useCallback(async () => {
-    if (!importJson) return;
-    setImporting(true);
-
+  const handleDownloadCurrent = useCallback(async () => {
     const backupJson = await exportData();
     const blob = new Blob([backupJson], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -63,23 +68,29 @@ export default function BackupPanel({ onClose, onImported }: Props) {
     a.download = `mahjong_backup_before_import_${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    onExported(markExported());
+    setPreImportBackedUp(true);
+  }, [onExported]);
 
+  const handleImport = useCallback(async () => {
+    if (!importJson || !preImportBackedUp) return;
+    setImporting(true);
     try {
       const { data } = validateImport(importJson);
       if (!data) {
-        alert('資料驗證失敗');
+        toast.show({ message: '資料驗證失敗', kind: 'error' });
         return;
       }
       await importData(data);
       await onImported();
-      alert('匯入成功');
+      toast.show({ message: '匯入成功', kind: 'success' });
       onClose();
     } catch {
-      alert('匯入失敗');
+      toast.show({ message: '匯入失敗', kind: 'error' });
     } finally {
       setImporting(false);
     }
-  }, [importJson, onImported, onClose]);
+  }, [importJson, preImportBackedUp, onImported, onClose, toast]);
 
   const handleClearAll = useCallback(async () => {
     await db.rounds.clear();
@@ -100,7 +111,7 @@ export default function BackupPanel({ onClose, onImported }: Props) {
       <div className="panel">
         <div className="panel-header">
           <h3>備份與還原</h3>
-          <button className="btn-icon" onClick={onClose}>✕</button>
+          <button className="btn-icon" onClick={onClose} aria-label="關閉"><span aria-hidden="true">✕</span></button>
         </div>
 
         <div className="backup-section">
@@ -117,7 +128,7 @@ export default function BackupPanel({ onClose, onImported }: Props) {
 
         <div className="backup-section">
           <h4>匯入還原</h4>
-          <p className="warn-text">匯入會取代所有現有資料，系統會先自動下載備份。</p>
+          <p className="warn-text">匯入會取代所有現有資料。請先下載目前資料作為備份，才能確認匯入。</p>
           <input
             type="file"
             accept=".json"
@@ -139,13 +150,21 @@ export default function BackupPanel({ onClose, onImported }: Props) {
                 </div>
               )}
               {importPreview.errors.length === 0 && (
-                <button
-                  className="btn-primary btn-block"
-                  onClick={handleImport}
-                  disabled={importing}
-                >
-                  {importing ? '匯入中...' : '確認匯入（取代現有資料）'}
-                </button>
+                <>
+                  <button
+                    className="btn-secondary btn-block"
+                    onClick={handleDownloadCurrent}
+                  >
+                    {preImportBackedUp ? '✓ 已下載目前資料（可再下載一次）' : '先下載目前資料'}
+                  </button>
+                  <button
+                    className="btn-primary btn-block"
+                    onClick={handleImport}
+                    disabled={importing || !preImportBackedUp}
+                  >
+                    {importing ? '匯入中...' : '確認匯入（取代現有資料）'}
+                  </button>
+                </>
               )}
             </div>
           )}

@@ -7,6 +7,9 @@ import { getPlayerName } from './db/players';
 import { computePlayerStats, filterRoundsByDate } from './utils/stats';
 import { computeDealerState } from './utils/dealer';
 import { computeAllRoundsMoney, computeCumulativeMoney } from './utils/money';
+import { loadLastExport, isBackupStale } from './utils/backupReminder';
+import { useToast } from './components/toastContext';
+import type { DeletedRoundSnapshot } from './hooks/useDB';
 import TableSetup from './components/TableSetup';
 import RoundRecorder from './components/RoundRecorder';
 import Dashboard from './components/Dashboard';
@@ -20,15 +23,16 @@ type View = 'setup' | 'game';
 export default function App() {
   const { sessions, createSession, refresh: refreshSessions } = useTableSessions();
   const [activeSession, setActiveSession] = useState<TableSession | null>(null);
-  const { rounds, allRounds, refresh: refreshRounds, addRound, updateRound, deleteRound } = useRounds(activeSession?.id ?? null);
+  const { rounds, allRounds, refresh: refreshRounds, addRound, updateRound, deleteRound, restoreRound } = useRounds(activeSession?.id ?? null);
   const { map: tablePlayerMap, refresh: refreshMap } = useAllTablePlayerIds();
   const [view, setView] = useState<View>('setup');
   const [prefs, setPrefs] = useState<Preferences>(loadPreferences);
   const [showHistory, setShowHistory] = useState(false);
   const [showBackup, setShowBackup] = useState(false);
   const [historyFilter, setHistoryFilter] = useState<{ playerId?: string; metric?: string } | null>(null);
-  const [undoRoundId, setUndoRoundId] = useState<string | null>(null);
-  const [showUndo, setShowUndo] = useState(false);
+  const [lastExport, setLastExport] = useState<string | null>(loadLastExport);
+  const [mountedAt] = useState(() => Date.now());
+  const toast = useToast();
 
   const dealerState = useMemo(() => {
     if (!activeSession) return null;
@@ -87,31 +91,38 @@ export default function App() {
     await refreshSessions();
   }, [activeSession, rounds, refreshSessions]);
 
+  const reloadActiveSession = useCallback(async (id: string) => {
+    const latest = await db.tableSessions.get(id);
+    if (latest) setActiveSession(prev => (prev && prev.id === id ? latest : prev));
+    await refreshSessions();
+  }, [refreshSessions]);
+
+  const handleUndo = useCallback(async (roundId: string) => {
+    const round = await db.rounds.get(roundId);
+    if (!round) return;
+    if (round.updatedAt !== round.createdAt) {
+      toast.show({ message: '此牌局已被修改，無法撤銷。請至牌局紀錄查看。', kind: 'error', duration: 4000 });
+      return;
+    }
+    await deleteRound(roundId);
+    await refreshMap();
+    await reloadActiveSession(round.tableSessionId);
+  }, [deleteRound, refreshMap, reloadActiveSession, toast]);
+
   const handleSaveRound = useCallback(async (data: Omit<Round, 'id' | 'createdAt' | 'updatedAt' | 'sequence'>) => {
     const roundData = dealerState
       ? { ...data, dealerId: dealerState.dealerId, dealerConsecutive: dealerState.consecutive }
       : data;
     const round = await addRound(roundData);
     await refreshMap();
-    setUndoRoundId(round.id);
-    setShowUndo(true);
-    setTimeout(() => setShowUndo(false), 5000);
-  }, [addRound, refreshMap, dealerState]);
-
-  const handleUndo = useCallback(async () => {
-    if (!undoRoundId) return;
-    const round = allRounds.find(r => r.id === undoRoundId) ?? rounds.find(r => r.id === undoRoundId);
-    if (!round) return;
-    if (round.updatedAt !== round.createdAt) {
-      alert('此牌局已被修改，無法撤銷。請至牌局紀錄查看。');
-      setShowUndo(false);
-      return;
-    }
-    await deleteRound(undoRoundId);
-    await refreshMap();
-    setShowUndo(false);
-    setUndoRoundId(null);
-  }, [undoRoundId, allRounds, rounds, deleteRound, refreshMap]);
+    toast.show({
+      key: 'undo',
+      message: '已儲存牌局',
+      actionLabel: '撤銷',
+      onAction: () => { void handleUndo(round.id); },
+      duration: 5000,
+    });
+  }, [addRound, refreshMap, dealerState, toast, handleUndo]);
 
   const handleEditRound = useCallback(async (id: string, data: Partial<Round>) => {
     await updateRound(id, data);
@@ -119,13 +130,25 @@ export default function App() {
   }, [updateRound, refreshMap]);
 
   const handleDeleteRound = useCallback(async (id: string) => {
-    await deleteRound(id);
+    const snapshot: DeletedRoundSnapshot | null = await deleteRound(id);
     await refreshMap();
-    if (id === undoRoundId) {
-      setShowUndo(false);
-      setUndoRoundId(null);
-    }
-  }, [deleteRound, refreshMap, undoRoundId]);
+    toast.dismiss('undo');
+    if (!snapshot) return;
+    await reloadActiveSession(snapshot.round.tableSessionId);
+    toast.show({
+      key: 'delete-undo',
+      message: '已刪除牌局',
+      actionLabel: '復原',
+      onAction: () => {
+        void (async () => {
+          await restoreRound(snapshot);
+          await refreshMap();
+          await reloadActiveSession(snapshot.round.tableSessionId);
+        })();
+      },
+      duration: 5000,
+    });
+  }, [deleteRound, restoreRound, refreshMap, reloadActiveSession, toast]);
 
   const handleOpenHistory = useCallback((filter?: { playerId?: string; metric?: string }) => {
     setHistoryFilter(filter ?? null);
@@ -157,23 +180,30 @@ export default function App() {
 
   const roundsMoney = useMemo(() => {
     if (!activeSession) return [];
-    return computeAllRoundsMoney(filteredRounds, activeSession);
-  }, [activeSession, filteredRounds]);
+    return computeAllRoundsMoney(rounds, activeSession);
+  }, [activeSession, rounds]);
 
   const cumulativeMoney = useMemo(() => {
     if (!activeSession) return {};
     return computeCumulativeMoney(roundsMoney, [...activeSession.playerIds]);
   }, [activeSession, roundsMoney]);
 
+  const oldestSessionStartedAt = sessions.length > 0 ? sessions[sessions.length - 1].startedAt : null;
+  const backupStale = isBackupStale(lastExport, oldestSessionStartedAt, mountedAt);
+
   return (
     <div className="app">
       <header className="app-header">
-        <h1 onClick={activeSession ? handleBackToSetup : undefined} style={activeSession ? { cursor: 'pointer' } : undefined}>
-          麻將勝率計算器
-        </h1>
+        <h1>麻將勝率計算器</h1>
         <div className="header-actions">
-          <button className="btn-icon" onClick={() => setShowBackup(true)} title="備份與還原">
-            ⚙
+          <button
+            className={`btn-icon ${backupStale ? 'has-reminder' : ''}`}
+            onClick={() => setShowBackup(true)}
+            title={backupStale ? '備份與還原（已超過 7 天未匯出備份）' : '備份與還原'}
+            aria-label={backupStale ? '備份與還原，已超過 7 天未匯出備份' : '備份與還原'}
+          >
+            <span aria-hidden="true">⚙</span>
+            {backupStale && <span className="reminder-dot" aria-hidden="true" />}
           </button>
         </div>
       </header>
@@ -230,13 +260,6 @@ export default function App() {
             onSave={handleSaveRound}
           />
 
-          {showUndo && (
-            <div className="undo-toast">
-              已儲存牌局
-              <button className="btn-link" onClick={handleUndo}>撤銷</button>
-            </div>
-          )}
-
           <Dashboard
             stats={stats}
             rounds={filteredRounds}
@@ -278,6 +301,7 @@ export default function App() {
         <BackupPanel
           onClose={() => setShowBackup(false)}
           onImported={refreshAll}
+          onExported={setLastExport}
         />
       )}
     </div>
