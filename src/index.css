@@ -1289,3 +1289,16 @@ button:disabled {
   padding: 6px 10px;
   margin-bottom: 8px;
 }
+
+.low-sample .stat-value,
+.low-sample td.clickable { opacity: 0.45; }
+.low-sample-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  background: var(--critical-bg);
+  color: var(--critical-text);
+  white-space: nowrap;
+}

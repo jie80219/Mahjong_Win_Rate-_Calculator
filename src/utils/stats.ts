@@ -119,6 +119,12 @@ export function computePlayerStats(
   });
 }
 
+export const MIN_SAMPLE = 10;
+
+export function isLowSample(stats: { effective: number }): boolean {
+  return stats.effective < MIN_SAMPLE;
+}
+
 export function formatRate(rate: number | null): string {
   if (rate === null) return '—';
   return (rate * 100).toFixed(1) + '%';

@@ -1,5 +1,5 @@
 import type { ComputedStats } from '../../types';
-import { formatRate } from '../../utils/stats';
+import { formatRate, isLowSample } from '../../utils/stats';
 import { formatMoney } from '../../utils/money';
 
 interface Props {
@@ -11,8 +11,10 @@ interface Props {
 export default function CardView({ stats, onOpenHistory, cumulativeMoney }: Props) {
   return (
     <div className="card-grid">
-      {stats.map(s => (
-        <div key={s.playerId} className="stat-card">
+      {stats.map(s => {
+        const low = isLowSample(s);
+        return (
+        <div key={s.playerId} className={`stat-card ${low ? 'low-sample' : ''}`}>
           <div className="card-header">
             <div className="card-name-row">
               <h4>{s.displayName}</h4>
@@ -24,6 +26,7 @@ export default function CardView({ stats, onOpenHistory, cumulativeMoney }: Prop
             </div>
             <span className="card-rounds">
               {s.total} 局（有效 {s.effective}・流局 {s.draws}）
+              {low && <span className="low-sample-badge">樣本少</span>}
             </span>
           </div>
           <div className="card-stats">
@@ -74,7 +77,8 @@ export default function CardView({ stats, onOpenHistory, cumulativeMoney }: Prop
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

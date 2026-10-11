@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { ComputedStats } from '../../types';
-import { formatRate } from '../../utils/stats';
+import { formatRate, isLowSample } from '../../utils/stats';
 
 interface Props {
   stats: ComputedStats[];
@@ -68,8 +68,11 @@ export default function ListView({ stats, onOpenHistory }: Props) {
           </thead>
           <tbody>
             {sorted.map(s => (
-              <tr key={s.playerId}>
-                <td className="sticky-col player-name">{s.displayName}</td>
+              <tr key={s.playerId} className={isLowSample(s) ? 'low-sample' : ''}>
+                <td className="sticky-col player-name">
+                  {s.displayName}
+                  {isLowSample(s) && <span className="low-sample-badge">樣本少</span>}
+                </td>
                 <td onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'selfDraw' })} className="clickable">{formatRate(s.selfDrawRate)}</td>
                 <td onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'win' })} className="clickable">{formatRate(s.winRate)}</td>
                 <td onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'overallWin' })} className="clickable">{formatRate(s.overallWinRate)}</td>
