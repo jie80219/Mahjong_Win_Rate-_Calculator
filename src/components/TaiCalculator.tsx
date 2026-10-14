@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { ResultType } from '../types';
 import {
-  TAI_GROUPS, ALL_TAI_ITEMS, loadTaiOverrides, saveTaiOverrides, taiOf, sumTai, describeTai,
+  TAI_GROUPS, ALL_TAI_ITEMS, loadTaiOverrides, saveTaiOverrides, taiOf, sumTai, describeTai, toggleTaiItem,
 } from '../utils/taiTable';
 
 interface Props {
@@ -20,17 +20,7 @@ export default function TaiCalculator({ resultType, onApply, onClose }: Props) {
   const total = sumTai(counts, overrides, extra);
   const note = describeTai(counts);
 
-  const toggle = (key: string) => {
-    const item = ALL_TAI_ITEMS.find(i => i.key === key)!;
-    setCounts(prev => {
-      const current = prev[key] ?? 0;
-      const max = item.max ?? 1;
-      const nextCount = current >= max ? 0 : current + 1;
-      const next = { ...prev, [key]: nextCount };
-      if (nextCount > 0) for (const ex of item.excludes ?? []) next[ex] = 0;
-      return next;
-    });
-  };
+  const toggle = (key: string) => setCounts(prev => toggleTaiItem(prev, key));
 
   const setOverride = (key: string, value: string) => {
     const item = ALL_TAI_ITEMS.find(i => i.key === key)!;
