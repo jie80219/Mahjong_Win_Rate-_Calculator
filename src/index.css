@@ -1412,6 +1412,9 @@ button:disabled {
 .tai-item-desc { font-size: 11px; color: var(--text-secondary); line-height: 1.3; }
 .tai-item.active .tai-item-desc { color: rgba(255,255,255,0.8); }
 
+.tai-item.covered { opacity: 0.55; border-style: dashed; }
+.tai-item.covered .tai-item-tai { color: var(--text-secondary); }
+
 .tai-item.editing { flex-direction: row; align-items: center; gap: 6px; }
 .tai-item.editing .tai-item-name { flex: 1; }
 .tai-item-input {

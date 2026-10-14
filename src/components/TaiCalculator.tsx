@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { ResultType } from '../types';
 import {
-  TAI_GROUPS, ALL_TAI_ITEMS, loadTaiOverrides, saveTaiOverrides, taiOf, sumTai, describeTai, toggleTaiItem,
+  TAI_GROUPS, ALL_TAI_ITEMS, loadTaiOverrides, saveTaiOverrides, taiOf, sumTai, describeTai, toggleTaiItem, coveredBy,
 } from '../utils/taiTable';
 
 interface Props {
@@ -77,18 +77,22 @@ export default function TaiCalculator({ resultType, onApply, onClose }: Props) {
                     </label>
                   );
                 }
+                const cover = coveredBy(counts, item.key);
                 return (
                   <button
                     key={item.key}
-                    className={`tai-item ${count > 0 ? 'active' : ''}`}
+                    className={`tai-item ${count > 0 ? 'active' : ''} ${cover ? 'covered' : ''}`}
                     onClick={() => toggle(item.key)}
+                    disabled={!!cover}
                     title={item.desc}
                   >
                     <span className="tai-item-name">
                       {item.name}
                       {count > 1 && <span className="tai-item-count">×{count}</span>}
                     </span>
-                    <span className="tai-item-tai">{value} 台{item.max ? '／個' : ''}</span>
+                    <span className="tai-item-tai">
+                      {cover ? `已含在${cover.name}` : `${value} 台${item.max ? '／個' : ''}`}
+                    </span>
                     <span className="tai-item-desc">{item.desc}</span>
                   </button>
                 );

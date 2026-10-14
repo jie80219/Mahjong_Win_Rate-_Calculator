@@ -9,8 +9,10 @@ export interface TaiItem {
   max?: number;
   /** 選了這項就不能同時算的項目 */
   excludes?: string[];
-  /** 必須同時成立其中一項（例如嚦咕一定要門清） */
-  requiresAnyOf?: string[];
+  /** 已包含在這項裡、不另外計台的項目（例如嚦咕已含門清），選了之後會被鎖住 */
+  covers?: string[];
+  /** 被包含時改成哪一項（例如門清自摸被嚦咕包含時，保留自摸） */
+  coverReplace?: Record<string, string>;
 }
 
 export interface TaiGroup {
@@ -26,8 +28,8 @@ export const TAI_GROUPS: TaiGroup[] = [
       { key: 'zimo', name: '自摸', tai: 1, desc: '自己摸進胡牌', excludes: ['menqingZimo'] },
       { key: 'menqingZimo', name: '門清自摸', tai: 3, desc: '門清又自摸（取代門清＋自摸）', excludes: ['menqing', 'zimo', 'quanqiu', 'banqiu'] },
       { key: 'dutin', name: '獨聽', tai: 1, desc: '單吊、中洞、邊張只聽一張' },
-      { key: 'banqiu', name: '半求人', tai: 1, desc: '吃碰到只剩一張單吊並自摸', excludes: ['quanqiu', 'menqing', 'menqingZimo'] },
-      { key: 'quanqiu', name: '全求人', tai: 2, desc: '全部吃碰，單吊別人放槍', excludes: ['menqing', 'menqingZimo', 'banqiu', 'zimo'] },
+      { key: 'banqiu', name: '半求人', tai: 1, desc: '吃碰到只剩一張單吊並自摸', excludes: ['quanqiu', 'menqing', 'menqingZimo', 'ligu', 'migi'] },
+      { key: 'quanqiu', name: '全求人', tai: 2, desc: '全部吃碰，單吊別人放槍', excludes: ['menqing', 'menqingZimo', 'banqiu', 'zimo', 'ligu', 'migi'] },
       { key: 'pinghu', name: '平胡', tai: 2, desc: '無字無花、全順子、聽兩面、非自摸', excludes: ['ligu'] },
       { key: 'gang', name: '槓', tai: 1, desc: '每一組槓 1 台（明槓、暗槓都算）', max: 4, excludes: ['ligu'] },
     ],
@@ -57,8 +59,9 @@ export const TAI_GROUPS: TaiGroup[] = [
       { key: 'sananke', name: '三暗刻', tai: 2, desc: '三組自己摸到的刻子', excludes: ['siananke', 'wuananke', 'ligu'] },
       { key: 'pengpeng', name: '碰碰胡', tai: 4, desc: '全部都是刻子', excludes: ['ligu'] },
       {
-        key: 'ligu', name: '嚦咕嚦咕', tai: 8, desc: '七對加一刻，一定要門清',
-        requiresAnyOf: ['menqing', 'menqingZimo'],
+        key: 'ligu', name: '嚦咕嚦咕', tai: 8, desc: '七對加一刻，一定要門清（已含門清，不另計）',
+        covers: ['menqing', 'menqingZimo'],
+        coverReplace: { menqingZimo: 'zimo' },
         excludes: ['pengpeng', 'pinghu', 'quanqiu', 'banqiu', 'sananke', 'siananke', 'wuananke', 'gang'],
       },
       { key: 'hunyise', name: '混一色', tai: 4, desc: '一種花色加字牌', excludes: ['qingyise', 'ziyise'] },
@@ -83,8 +86,9 @@ export const TAI_GROUPS: TaiGroup[] = [
     ],
   },
   {
-    title: '骰子家規',
+    title: '家規',
     items: [
+      { key: 'migi', name: 'Migi', tai: 8, desc: '四家皆門清，且在 8 張牌以內（含）喊出', excludes: ['quanqiu', 'banqiu'] },
       { key: 'diceRed', name: '骰規全紅', tai: 1, desc: '三顆骰子都是紅點（1 或 4）', excludes: ['diceStraight'] },
       { key: 'diceStraight', name: '骰規順子', tai: 2, desc: '三顆骰子點數連號，例如 2-3-4', excludes: ['diceRed'] },
     ],
@@ -120,28 +124,28 @@ function select(counts: Record<string, number>, item: TaiItem, count: number): v
   if (count > 0) for (const ex of item.excludes ?? []) counts[ex] = 0;
 }
 
-/** 點一下某個牌型：可重複的項目會累加到上限後歸零，並處理互斥與必要條件 */
+/** 這一項目前是否被已選的項目包含（例如選了嚦咕，門清就不另計），回傳包含它的項目 */
+export function coveredBy(counts: Record<string, number>, key: string): TaiItem | null {
+  return ALL_TAI_ITEMS.find(i => (counts[i.key] ?? 0) > 0 && i.covers?.includes(key)) ?? null;
+}
+
+/** 點一下某個牌型：可重複的項目會累加到上限後歸零，並處理互斥與包含關係 */
 export function toggleTaiItem(prev: Record<string, number>, key: string): Record<string, number> {
   const item = ALL_TAI_ITEMS.find(i => i.key === key);
-  if (!item) return prev;
+  if (!item || coveredBy(prev, key)) return prev;
   const next = { ...prev };
   const current = next[key] ?? 0;
   const nextCount = current >= (item.max ?? 1) ? 0 : current + 1;
   select(next, item, nextCount);
 
-  // 剛選的項目需要前提（嚦咕要門清）：沒有就自動補上，已經自摸的話改成門清自摸
-  if (nextCount > 0 && item.requiresAnyOf && !item.requiresAnyOf.some(k => (next[k] ?? 0) > 0)) {
-    const preferKey = (next.zimo ?? 0) > 0 && item.requiresAnyOf.includes('menqingZimo')
-      ? 'menqingZimo'
-      : item.requiresAnyOf[0];
-    const prereq = ALL_TAI_ITEMS.find(i => i.key === preferKey);
-    if (prereq) select(next, prereq, 1);
-  }
-
-  // 前提被取消或被互斥掉時，依賴它的項目也一起取消
-  for (const dep of ALL_TAI_ITEMS) {
-    if (dep.requiresAnyOf && (next[dep.key] ?? 0) > 0 && !dep.requiresAnyOf.some(k => (next[k] ?? 0) > 0)) {
-      next[dep.key] = 0;
+  // 選了會包含其他項目的牌型（嚦咕含門清）：被包含的項目不另計，門清自摸則保留自摸
+  if (nextCount > 0) {
+    for (const coveredKey of item.covers ?? []) {
+      if ((next[coveredKey] ?? 0) === 0) continue;
+      next[coveredKey] = 0;
+      const replaceKey = item.coverReplace?.[coveredKey];
+      const replacement = replaceKey && ALL_TAI_ITEMS.find(i => i.key === replaceKey);
+      if (replacement) select(next, replacement, 1);
     }
   }
   return next;
