@@ -5,6 +5,7 @@ const LAST_TABLE_KEY = 'mahjong_last_table';
 
 const DEFAULT_PREFS: Preferences = {
   dashboardMode: 'card',
+  keepAwake: true,
   selectedMetric: 'win',
   selectedPlayerIds: [],
   scope: 'table',

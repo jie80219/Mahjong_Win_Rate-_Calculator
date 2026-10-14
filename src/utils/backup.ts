@@ -1,5 +1,5 @@
 import { db } from '../db';
-import type { TableSession, Round } from '../types';
+import type { TableSession, Round, Player } from '../types';
 import { computePlayerStats, formatRate } from './stats';
 import { getPlayerName } from '../db/players';
 
@@ -8,16 +8,19 @@ interface BackupData {
   exportedAt: string;
   tableSessions: TableSession[];
   rounds: Round[];
+  players?: Player[];
 }
 
 export async function exportData(): Promise<string> {
   const tableSessions = await db.tableSessions.toArray();
   const rounds = await db.rounds.toArray();
+  const players = await db.players.toArray();
   const data: BackupData = {
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     tableSessions,
     rounds,
+    players,
   };
   return JSON.stringify(data, null, 2);
 }
@@ -71,11 +74,16 @@ export function validateImport(json: string): { data: BackupData | null; preview
 }
 
 export async function importData(data: BackupData): Promise<void> {
-  await db.transaction('rw', db.tableSessions, db.rounds, async () => {
+  await db.transaction('rw', db.tableSessions, db.rounds, db.players, async () => {
     await db.tableSessions.clear();
     await db.rounds.clear();
     await db.tableSessions.bulkAdd(data.tableSessions);
     await db.rounds.bulkAdd(data.rounds);
+    // 舊版備份沒有玩家名單，保留本機現有名單
+    if (Array.isArray(data.players) && data.players.length > 0) {
+      await db.players.clear();
+      await db.players.bulkAdd(data.players);
+    }
   });
 }
 

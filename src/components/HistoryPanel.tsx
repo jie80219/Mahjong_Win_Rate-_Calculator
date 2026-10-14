@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import type { Round, TableSession } from '../types';
 import { getPlayerName } from '../db/players';
 import RoundRecorder from './RoundRecorder';
+import { computeDealerTimeline } from '../utils/dealer';
 
 interface Props {
   rounds: Round[];
@@ -68,6 +69,9 @@ export default function HistoryPanel({ rounds, tableSession, sessions, filter, o
   const editSession = editingRound
     ? sessions.find(s => s.id === editingRound.tableSessionId) ?? tableSession
     : tableSession;
+  const editDealerId = editingRound
+    ? computeDealerTimeline(editSession, rounds).byRound.get(editingRound.id)?.dealerId ?? null
+    : null;
 
   const handleEditSave = async (data: Omit<Round, 'id' | 'createdAt' | 'updatedAt' | 'sequence'>) => {
     if (!editingId) return;
@@ -76,6 +80,7 @@ export default function HistoryPanel({ rounds, tableSession, sessions, filter, o
       winnerId: data.winnerId,
       discarderId: data.discarderId,
       tai: data.tai,
+      taiNote: data.taiNote,
     });
     setEditingId(null);
   };
@@ -104,6 +109,7 @@ export default function HistoryPanel({ rounds, tableSession, sessions, filter, o
             onSave={handleEditSave}
             initialData={editingRound}
             editMode
+            dealerId={editDealerId}
             onCancel={() => setEditingId(null)}
           />
         ) : (
@@ -121,6 +127,7 @@ export default function HistoryPanel({ rounds, tableSession, sessions, filter, o
                     <span className="history-summary">{roundSummary(r)}</span>
                     {r.tai !== null && r.tai >= 5 && <span className="critical-badge">爆擊</span>}
                   </div>
+                  {r.taiNote && <div className="history-tai-note">{r.taiNote}</div>}
                   <div className="history-meta">
                     <span>{new Date(r.playedAt).toLocaleString('zh-TW')}</span>
                   </div>

@@ -1244,6 +1244,463 @@ button:disabled {
   .money-detail-item.negative { color: #f87171; background: rgba(248, 113, 113, 0.1); }
 }
 
+/* ---------- 牌桌式記錄 ---------- */
+.mj-table {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr 1fr;
+  grid-template-rows: auto auto auto;
+  grid-template-areas:
+    ". top ."
+    "left center right"
+    ". bottom .";
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.mj-seat {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 64px;
+  padding: 8px 4px;
+  border-radius: var(--radius);
+  background: var(--bg);
+  border: 2px solid var(--border);
+  font-weight: 600;
+  transition: all 0.15s;
+}
+
+.mj-seat-top { grid-area: top; }
+.mj-seat-left { grid-area: left; }
+.mj-seat-right { grid-area: right; }
+.mj-seat-bottom { grid-area: bottom; }
+
+.mj-seat-wind { font-size: 11px; color: var(--text-secondary); font-weight: 700; }
+.mj-seat-name { font-size: 15px; }
+
+.mj-seat.is-winner {
+  background: var(--success);
+  border-color: var(--success);
+  color: #fff;
+}
+.mj-seat.is-winner .mj-seat-wind { color: rgba(255,255,255,0.8); }
+
+.mj-seat.is-discarder {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+.mj-seat.is-discarder .mj-seat-wind { color: rgba(255,255,255,0.8); }
+
+.mj-seat-role {
+  position: absolute;
+  top: -8px;
+  right: -4px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.mj-center {
+  grid-area: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  border-radius: var(--radius);
+  background: #0f5132;
+  justify-content: center;
+}
+
+.mj-center-btn {
+  padding: 8px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 15px;
+  min-height: 40px;
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.25);
+}
+.mj-center-btn.active { background: #f5c542; color: #1a1a1a; border-color: #f5c542; }
+.mj-center-btn.draw.active { background: #9ca3af; border-color: #9ca3af; }
+
+.recorder-hint {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.recorder-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.recorder-header h3 { margin-bottom: 0; }
+.recorder-header .btn-link { font-size: 13px; }
+
+.tai-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.tai-section .tai-label-row label { margin-bottom: 0; }
+.btn-calc { font-size: 13px; }
+.tai-note, .history-tai-note {
+  font-size: 12px;
+  color: var(--primary);
+  margin-bottom: 6px;
+}
+.history-tai-note { margin: 4px 0 0; }
+
+/* ---------- 台數計算表 ---------- */
+.panel.tai-calc { padding-bottom: 0; }
+
+.tai-calc-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.tai-calc-toolbar .setup-hint { text-align: left; margin: 0; }
+.tai-calc-toolbar .btn-link { white-space: nowrap; flex-shrink: 0; }
+.tai-reset { font-size: 13px; margin-bottom: 8px; color: var(--danger); }
+
+.tai-group { margin-bottom: 14px; }
+.tai-group h4 { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }
+
+.tai-items {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+@media (min-width: 500px) { .tai-items { grid-template-columns: repeat(3, 1fr); } }
+
+.tai-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 1px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  min-height: 44px;
+  transition: all 0.15s;
+}
+.tai-item.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.tai-item-name { font-weight: 700; font-size: 14px; }
+.tai-item-count { margin-left: 4px; font-size: 12px; }
+.tai-item-tai { font-size: 12px; font-weight: 600; color: var(--critical-text); }
+.tai-item.active .tai-item-tai { color: #fde68a; }
+.tai-item-desc { font-size: 11px; color: var(--text-secondary); line-height: 1.3; }
+.tai-item.active .tai-item-desc { color: rgba(255,255,255,0.8); }
+
+.tai-item.editing { flex-direction: row; align-items: center; gap: 6px; }
+.tai-item.editing .tai-item-name { flex: 1; }
+.tai-item-input {
+  width: 48px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 16px;
+  text-align: center;
+}
+.tai-item-unit { font-size: 12px; color: var(--text-secondary); }
+
+.tai-calc-footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 -16px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.tai-calc-total { display: flex; flex-direction: column; font-weight: 600; min-width: 0; }
+.tai-calc-number { font-size: 28px; font-weight: 800; line-height: 1.1; }
+.tai-calc-note {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tai-calc-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+/* ---------- 牌桌狀態 ---------- */
+.dealer-jiang {
+  font-size: 12px;
+  background: #f59e0b;
+  color: #000;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.jiang-banner, .ended-banner {
+  background: var(--critical-bg);
+  color: var(--critical-text);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.ended-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  color: var(--text-secondary);
+  border: 1px dashed var(--border);
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.jiang-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.jiang-actions .setup-hint { margin: 0; }
+
+.streak-alerts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.streak-alert {
+  font-size: 13px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.toast-body { display: flex; flex-direction: column; }
+.toast-money { font-size: 12px; opacity: 0.85; }
+
+.table-banner .btn-sm { white-space: nowrap; flex-shrink: 0; }
+.section-actions { flex-wrap: wrap; }
+.section-actions > button { flex: 1; min-width: 100px; }
+.btn-end { color: var(--danger); }
+
+.wake-btn { opacity: 0.5; }
+.wake-btn.on { opacity: 1; color: #f59e0b; }
+
+.seat-wind-label { font-size: 11px; color: var(--text-secondary); }
+
+.dealer-rule {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+.dealer-rule-options { display: flex; gap: 6px; flex-wrap: wrap; }
+.money-hint { font-size: 12px; color: var(--text-secondary); margin-top: 6px; }
+
+.player-btn-add {
+  border-style: dashed;
+  color: var(--primary);
+}
+
+.tag-muted {
+  display: inline-block;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  margin-right: 6px;
+}
+
+/* ---------- 玩家管理 ---------- */
+.text-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 16px;
+  font-family: inherit;
+}
+
+.player-add-row { display: flex; gap: 8px; margin-bottom: 8px; }
+
+.player-manage-list { display: flex; flex-direction: column; gap: 6px; }
+
+.player-manage-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  background: var(--bg);
+  border-radius: 8px;
+}
+.player-manage-item.inactive .player-manage-name { color: var(--text-secondary); text-decoration: line-through; }
+.player-manage-name { flex: 1; font-weight: 600; }
+
+/* ---------- 結算 ---------- */
+.settle-ranking { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+
+.settle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border-radius: 8px;
+}
+.settle-rank {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.settle-name { font-weight: 700; }
+.settle-sub { font-size: 12px; color: var(--text-secondary); flex: 1; }
+.settle-money { font-weight: 700; font-variant-numeric: tabular-nums; }
+.settle-money.positive { color: var(--success); }
+.settle-money.negative { color: var(--danger); }
+
+.settle-transfers { margin-bottom: 16px; }
+.settle-transfers h4 { font-size: 14px; margin-bottom: 8px; color: var(--text-secondary); }
+
+.transfer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.transfer-arrow { color: var(--text-secondary); }
+.transfer-amount { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+.report-card-preview { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.report-card-preview img { width: 100%; border-radius: var(--radius); box-shadow: var(--shadow); }
+
+.share-qr { display: flex; justify-content: center; margin: 8px 0 16px; }
+.share-qr img { width: 240px; height: 240px; border-radius: 8px; background: #fff; }
+
+/* ---------- 趣味 ---------- */
+.fun-view { display: flex; flex-direction: column; gap: 20px; }
+.fun-section h4 { font-size: 15px; margin-bottom: 10px; }
+
+.title-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+@media (min-width: 500px) { .title-grid { grid-template-columns: repeat(3, 1fr); } }
+
+.title-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 12px 8px;
+  background: var(--bg);
+  border-radius: var(--radius);
+  gap: 2px;
+}
+.title-icon { font-size: 24px; }
+.title-name { font-size: 12px; color: var(--text-secondary); }
+.title-holder { font-weight: 700; font-size: 15px; }
+.title-detail { font-size: 12px; color: var(--text-secondary); }
+
+.fun-callout {
+  background: var(--critical-bg);
+  color: var(--critical-text);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.rivalry-wrap { overflow-x: auto; }
+.rivalry-table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.rivalry-table th, .rivalry-table td {
+  padding: 8px 6px;
+  text-align: center;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+.rivalry-table th { font-weight: 600; background: var(--bg); }
+.rivalry-corner { font-size: 10px; color: var(--text-secondary); }
+.rivalry-cell {
+  font-weight: 700;
+  background: rgba(220, 38, 38, calc(var(--heat, 0) * 0.55));
+}
+.rivalry-self { color: var(--text-secondary); background: var(--bg); }
+
+.style-list { display: flex; flex-direction: column; gap: 6px; }
+.style-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 8px 12px;
+  background: var(--bg);
+  border-radius: 8px;
+}
+.style-name { font-weight: 700; min-width: 48px; }
+.style-tags { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
+.style-tag {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 600;
+}
+.style-meta { font-size: 12px; color: var(--text-secondary); }
+
+.streak-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.streak-table th, .streak-table td { padding: 8px 6px; text-align: center; border-bottom: 1px solid var(--border); }
+.streak-table th { font-size: 12px; color: var(--text-secondary); }
+.streak-hot { color: #ea580c; font-weight: 700; }
+.streak-cold { color: var(--text-secondary); }
+
 @media (min-width: 768px) {
   .app { padding: 0 24px 40px; }
   .player-grid { grid-template-columns: repeat(6, 1fr); }

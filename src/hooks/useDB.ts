@@ -1,8 +1,36 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../db';
-import type { TableSession, Round } from '../types';
+import type { TableSession, Round, Player, DealerRule } from '../types';
 import { generateId, nowISO } from '../utils/id';
 import { saveLastTable } from '../utils/preferences';
+import { DEFAULT_PLAYERS, setPlayerCache } from '../db/players';
+
+export function usePlayers() {
+  const [players, setPlayers] = useState<Player[]>(DEFAULT_PLAYERS);
+  const [ready, setReady] = useState(false);
+
+  const refresh = useCallback(async () => {
+    const data = await db.players.toArray();
+    const list = data.length ? data : DEFAULT_PLAYERS;
+    setPlayerCache(list);
+    setPlayers(list);
+    setReady(true);
+  }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const addPlayer = useCallback(async (displayName: string) => {
+    await db.players.add({ id: 'p' + generateId(), displayName, isActive: true });
+    await refresh();
+  }, [refresh]);
+
+  const updatePlayer = useCallback(async (id: string, changes: Partial<Omit<Player, 'id'>>) => {
+    await db.players.update(id, changes);
+    await refresh();
+  }, [refresh]);
+
+  return { players, ready, refresh, addPlayer, updatePlayer };
+}
 
 export function useTableSessions() {
   const [sessions, setSessions] = useState<TableSession[]>([]);
@@ -22,12 +50,15 @@ export function useTableSessions() {
     initialDealerIndex?: number,
     baseMoney?: number,
     taiMoney?: number,
+    dealerRule?: DealerRule,
   ) => {
     const session: TableSession = {
       id: generateId(),
       playerIds,
       seatOrder,
+      initialSeatOrder: seatOrder,
       initialDealerIndex,
+      dealerRule,
       baseMoney,
       taiMoney,
       startedAt: nowISO(),

@@ -1,13 +1,14 @@
 import { useState, useCallback } from 'react';
 import type { ComputedStats, Preferences, MetricKey, Round, TableSession } from '../types';
 import type { RoundMoney } from '../utils/money';
-import { PLAYERS, getPlayerName } from '../db/players';
+import { getAllPlayers, getPlayerName } from '../db/players';
 import BarChartView from './views/BarChartView';
 import MoneyBarChart from './views/MoneyBarChart';
 import LineChartView from './views/LineChartView';
 import ListView from './views/ListView';
 import CardView from './views/CardView';
 import MoneyDetailCards from './views/MoneyDetailCards';
+import FunView from './views/FunView';
 
 interface Props {
   stats: ComputedStats[];
@@ -41,6 +42,7 @@ const VIEW_MODES = [
   { key: 'line' as const, label: '折線' },
   { key: 'list' as const, label: '清單' },
   { key: 'card' as const, label: '卡片' },
+  { key: 'fun' as const, label: '趣味' },
 ];
 
 const DATE_PRESETS = [
@@ -54,12 +56,14 @@ const DATE_PRESETS = [
 export default function Dashboard({
   stats,
   rounds,
+  allRounds,
   tablePlayerMap,
   activeSession,
   prefs,
   onUpdatePrefs,
   tableDraw,
   onOpenHistory,
+  sessions,
   roundsMoney,
   cumulativeMoney,
 }: Props) {
@@ -87,7 +91,10 @@ export default function Dashboard({
     }
   }, [prefs.selectedPlayerIds, onUpdatePrefs]);
 
-  const availablePlayers = scope === 'all' ? PLAYERS : PLAYERS.filter(p => activeSession.playerIds.includes(p.id));
+  const availablePlayers = scope === 'all'
+    ? getAllPlayers().filter(p => p.isActive || prefs.selectedPlayerIds.includes(p.id))
+    : getAllPlayers().filter(p => activeSession.playerIds.includes(p.id));
+  const chartPlayerIds = prefs.selectedPlayerIds.length > 0 ? prefs.selectedPlayerIds : [...activeSession.playerIds];
 
   const dateLabel = (() => {
     switch (prefs.dateRange.type) {
@@ -213,7 +220,7 @@ export default function Dashboard({
       {noData ? (
         <div className="no-data">
           <p>尚無牌局紀錄</p>
-          <p className="no-data-hint">按上方「記錄一局」開始</p>
+          <p className="no-data-hint">在上方牌桌點選胡牌的人開始記錄</p>
         </div>
       ) : (
         <>
@@ -232,15 +239,16 @@ export default function Dashboard({
             {prefs.dashboardMode === 'bar' && prefs.selectedMetric === 'money' && (
               <MoneyBarChart
                 cumulativeMoney={cumulativeMoney}
-                playerIds={prefs.selectedPlayerIds.length > 0 ? prefs.selectedPlayerIds : [...activeSession.playerIds]}
+                playerIds={chartPlayerIds}
               />
             )}
             {prefs.dashboardMode === 'line' && (
               <LineChartView
                 rounds={rounds}
-                playerIds={prefs.selectedPlayerIds.length > 0 ? prefs.selectedPlayerIds : [...activeSession.playerIds]}
+                playerIds={chartPlayerIds}
                 metric={prefs.selectedMetric}
                 tablePlayerMap={tablePlayerMap}
+                roundsMoney={roundsMoney}
               />
             )}
             {prefs.dashboardMode === 'list' && (
@@ -249,9 +257,19 @@ export default function Dashboard({
             {prefs.dashboardMode === 'card' && (
               <CardView stats={statsWithNames} onOpenHistory={onOpenHistory} cumulativeMoney={cumulativeMoney} />
             )}
+            {prefs.dashboardMode === 'fun' && (
+              <FunView
+                stats={statsWithNames}
+                rounds={rounds}
+                allRounds={allRounds}
+                sessions={sessions}
+                playerIds={chartPlayerIds}
+                tablePlayerMap={tablePlayerMap}
+              />
+            )}
           </div>
 
-          {prefs.selectedMetric === 'money' && roundsMoney.length > 0 && (
+          {scope === 'table' && prefs.selectedMetric === 'money' && (prefs.dashboardMode === 'bar' || prefs.dashboardMode === 'line') && roundsMoney.length > 0 && (
             <MoneyDetailCards roundsMoney={roundsMoney} playerIds={[...activeSession.playerIds]} />
           )}
         </>

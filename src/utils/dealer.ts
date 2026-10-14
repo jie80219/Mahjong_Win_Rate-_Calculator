@@ -2,14 +2,29 @@ import type { Round, TableSession, DealerState, WindName } from '../types';
 
 const WINDS: WindName[] = ['東', '南', '西', '北'];
 
-export function computeDealerState(
+export interface RoundDealer {
+  dealerId: string;
+  consecutive: number;
+}
+
+export interface DealerTimeline {
+  /** 每一局開打時的莊家與連莊數（依現有牌局即時推算，修改舊牌局後會自動更新） */
+  byRound: Map<string, RoundDealer>;
+  /** 下一局的莊家狀態 */
+  state: DealerState | null;
+}
+
+export function computeDealerTimeline(
   session: TableSession,
   rounds: Round[],
-): DealerState | null {
-  const seatOrder = session.seatOrder;
-  if (!seatOrder || session.initialDealerIndex === undefined) return null;
+): DealerTimeline {
+  const byRound = new Map<string, RoundDealer>();
+  const currentSeat = session.seatOrder;
+  if (!currentSeat || session.initialDealerIndex === undefined) {
+    return { byRound, state: null };
+  }
 
-  const sorted = [...rounds]
+  const sorted = rounds
     .filter(r => r.tableSessionId === session.id)
     .sort((a, b) => a.sequence - b.sequence);
 
@@ -17,52 +32,60 @@ export function computeDealerState(
     .slice()
     .sort((a, b) => a.afterSequence - b.afterSequence);
 
+  let seat = session.initialSeatOrder ?? currentSeat;
   let dealerIdx = session.initialDealerIndex;
   let consecutive = 0;
-  let dealerRotations = 0;
+  let rotations = 0;
+  let overridePos = 0;
+
+  const applyOverridesUpTo = (limit: number) => {
+    while (overridePos < overrides.length && overrides[overridePos].afterSequence < limit) {
+      const o = overrides[overridePos++];
+      const prevDealer = seat[dealerIdx];
+      if (o.seatOrder) seat = o.seatOrder;
+      const prevIdxInNewSeat = Math.max(0, seat.indexOf(prevDealer));
+      rotations += (o.dealerIndex - prevIdxInNewSeat + 4) % 4;
+      dealerIdx = o.dealerIndex;
+      consecutive = o.consecutive;
+    }
+  };
 
   for (const r of sorted) {
-    const override = overrides.find(o => o.afterSequence === r.sequence - 1);
-    if (override) {
-      dealerIdx = override.dealerIndex;
-      consecutive = override.consecutive;
-      dealerRotations = computeRotationsFromIndex(session.initialDealerIndex, dealerIdx, seatOrder.length);
-    }
+    applyOverridesUpTo(r.sequence);
 
-    const dealerId = seatOrder[dealerIdx];
-    const dealerWins =
-      r.resultType === 'draw' ||
-      (r.winnerId === dealerId);
+    const dealerId = seat[dealerIdx];
+    byRound.set(r.id, { dealerId, consecutive });
 
-    if (dealerWins) {
+    const dealerStays = r.resultType === 'draw' || r.winnerId === dealerId;
+    if (dealerStays) {
       consecutive++;
     } else {
       consecutive = 0;
       dealerIdx = (dealerIdx + 1) % 4;
-      dealerRotations++;
+      rotations++;
     }
   }
 
-  const lastOverride = overrides.find(o => o.afterSequence >= (sorted.length));
-  if (lastOverride) {
-    dealerIdx = lastOverride.dealerIndex;
-    consecutive = lastOverride.consecutive;
-    dealerRotations = computeRotationsFromIndex(session.initialDealerIndex, dealerIdx, seatOrder.length);
-  }
-
-  const fullCycles = Math.floor(dealerRotations / 4);
-  const windIndex = Math.min(fullCycles, 3);
+  applyOverridesUpTo(Infinity);
 
   return {
-    dealerId: seatOrder[dealerIdx],
-    consecutive,
-    wind: WINDS[windIndex],
-    windRound: (dealerRotations % 4) + 1,
+    byRound,
+    state: {
+      dealerId: seat[dealerIdx],
+      consecutive,
+      wind: WINDS[Math.floor(rotations / 4) % 4],
+      windRound: (rotations % 4) + 1,
+      jiang: Math.floor(rotations / 16) + 1,
+      jiangComplete: rotations > 0 && rotations % 16 === 0 && consecutive === 0,
+    },
   };
 }
 
-function computeRotationsFromIndex(initial: number, current: number, size: number): number {
-  return (current - initial + size) % size;
+export function computeDealerState(
+  session: TableSession,
+  rounds: Round[],
+): DealerState | null {
+  return computeDealerTimeline(session, rounds).state;
 }
 
 export function getDealerLabel(state: DealerState): string {

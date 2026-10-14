@@ -1,7 +1,9 @@
-import { useState, useCallback } from 'react';
-import type { TableSession } from '../types';
-import { PLAYERS, getPlayerName } from '../db/players';
+import { useState, useCallback, useMemo } from 'react';
+import type { TableSession, Player, DealerRule } from '../types';
+import { getPlayerName } from '../db/players';
 import { loadLastTable } from '../utils/preferences';
+
+const WINDS = ['東', '南', '西', '北'];
 
 interface StartTableArgs {
   playerIds: [string, string, string, string];
@@ -9,24 +11,32 @@ interface StartTableArgs {
   initialDealerIndex: number;
   baseMoney: number;
   taiMoney: number;
+  dealerRule: DealerRule;
 }
 
 interface Props {
+  players: Player[];
   sessions: TableSession[];
   onStartTable: (args: StartTableArgs) => void;
   onResumeSession: (session: TableSession) => void;
+  onManagePlayers: () => void;
 }
 
 type Step = 'select' | 'seat';
 
-export default function TableSetup({ sessions, onStartTable, onResumeSession }: Props) {
+export default function TableSetup({ players, sessions, onStartTable, onResumeSession, onManagePlayers }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
   const [step, setStep] = useState<Step>('select');
   const [seatOrder, setSeatOrder] = useState<string[]>([]);
   const [dealerIndex, setDealerIndex] = useState<number>(0);
   const [baseMoneyStr, setBaseMoneyStr] = useState('100');
   const [taiMoneyStr, setTaiMoneyStr] = useState('100');
-  const lastTable = loadLastTable();
+  const [dealerRule, setDealerRule] = useState<DealerRule>('standard');
+  const activePlayers = useMemo(() => players.filter(p => p.isActive), [players]);
+  const lastTable = useMemo(() => {
+    const stored = loadLastTable();
+    return stored && stored.every(id => activePlayers.some(p => p.id === id)) ? stored : null;
+  }, [activePlayers]);
 
   const togglePlayer = useCallback((pid: string) => {
     setSelected(prev => {
@@ -75,8 +85,9 @@ export default function TableSetup({ sessions, onStartTable, onResumeSession }: 
       initialDealerIndex: dealerIndex,
       baseMoney: Math.max(0, Number(baseMoneyStr) || 0),
       taiMoney: Math.max(0, Number(taiMoneyStr) || 0),
+      dealerRule,
     });
-  }, [selected, seatOrder, dealerIndex, baseMoneyStr, taiMoneyStr, onStartTable]);
+  }, [selected, seatOrder, dealerIndex, baseMoneyStr, taiMoneyStr, dealerRule, onStartTable]);
 
   if (step === 'seat') {
     return (
@@ -92,6 +103,7 @@ export default function TableSetup({ sessions, onStartTable, onResumeSession }: 
               onClick={() => setDealerIndex(i)}
             >
               <div className="seat-content">
+                <span className="seat-wind-label">{WINDS[i]}</span>
                 <span>
                   {dealerIndex === i && <span className="dealer-badge">莊</span>}
                   {getPlayerName(pid)}
@@ -129,6 +141,28 @@ export default function TableSetup({ sessions, onStartTable, onResumeSession }: 
               onChange={e => setTaiMoneyStr(e.target.value.replace(/[^0-9]/g, ''))}
             />
           </div>
+          <div className="dealer-rule">
+            <label className="money-label">莊家台</label>
+            <div className="dealer-rule-options">
+              <button
+                className={`date-btn ${dealerRule === 'standard' ? 'active' : ''}`}
+                onClick={() => setDealerRule('standard')}
+              >
+                標準
+              </button>
+              <button
+                className={`date-btn ${dealerRule === 'legacy' ? 'active' : ''}`}
+                onClick={() => setDealerRule('legacy')}
+              >
+                僅閒家自摸
+              </button>
+            </div>
+          </div>
+          <p className="money-hint">
+            {dealerRule === 'standard'
+              ? '莊家胡牌、放槍、自摸或被摸，都加計莊家台（1 + 2×連莊）'
+              : '只有閒家自摸時，莊家多付莊家台（1 + 2×連莊）'}
+          </p>
         </div>
 
         <div className="recorder-actions">
@@ -175,7 +209,7 @@ export default function TableSetup({ sessions, onStartTable, onResumeSession }: 
       )}
 
       <div className="player-grid">
-        {PLAYERS.map(p => {
+        {activePlayers.map(p => {
           const isSelected = selected.includes(p.id);
           const isDisabled = !isSelected && selected.length >= 4;
           return (
@@ -190,6 +224,9 @@ export default function TableSetup({ sessions, onStartTable, onResumeSession }: 
             </button>
           );
         })}
+        <button className="player-btn player-btn-add" onClick={onManagePlayers}>
+          ＋ 管理
+        </button>
       </div>
 
       <button
@@ -213,6 +250,7 @@ export default function TableSetup({ sessions, onStartTable, onResumeSession }: 
                 {s.playerIds.map(id => getPlayerName(id)).join('、')}
               </span>
               <span className="session-date">
+                {s.endedAt && <span className="tag-muted">已結束</span>}
                 {new Date(s.startedAt).toLocaleDateString('zh-TW')}
               </span>
             </button>
