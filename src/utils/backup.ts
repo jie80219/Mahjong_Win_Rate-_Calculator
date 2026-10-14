@@ -181,8 +181,8 @@ ${stats.map(s => `<div class="card">
 <div class="card-row"><span class="card-label">勝率</span><span class="card-val highlight">${formatRate(s.overallWinRate)}　<small>${s.selfDraws + s.ronWins}/${s.total}</small></span></div>
 <div class="card-row"><span class="card-label">放槍率</span><span class="card-val">${formatRate(s.discardRate)}　<small>${s.discards}/${s.effective}</small></span></div>
 <div class="card-row"><span class="card-label">被摸率</span><span class="card-val">${formatRate(s.beDrawnRate)}　<small>${s.beDrawn}/${s.effective}</small></span></div>
-<div class="card-row"><span class="card-label">爆擊率</span><span class="card-val">${formatRate(s.criticalRate)}　<small>${s.criticals}/${s.effective}</small></span></div>
-<div class="card-row"><span class="card-label">被爆率</span><span class="card-val">${formatRate(s.beCriticalRate)}　<small>${s.beCriticals}/${s.effective}</small></span></div>
+<div class="card-row"><span class="card-label">大牌率</span><span class="card-val">${formatRate(s.criticalRate)}　<small>${s.criticals}/${s.effective}</small></span></div>
+<div class="card-row"><span class="card-label">放大槍率</span><span class="card-val">${formatRate(s.beCriticalRate)}　<small>${s.beCriticals}/${s.effective}</small></span></div>
 <div class="card-row"><span class="card-label">流局率</span><span class="card-val">${formatRate(s.drawRate)}　<small>${s.draws}/${s.total}</small></span></div>
 </div>`).join('\n')}
 </div>
@@ -238,9 +238,9 @@ bar('chartWin', '勝率 / 胡牌率 / 自摸率', [
   { label: '自摸率', data: D.selfDrawRate, backgroundColor: '#81B29A' },
 ]);
 
-bar('chartAttack', '爆擊率 / 被爆率', [
-  { label: '爆擊率', data: D.criticalRate, backgroundColor: '#F2CC8F' },
-  { label: '被爆率', data: D.beCriticalRate, backgroundColor: '#E07A5F' },
+bar('chartAttack', '大牌率 / 放大槍率', [
+  { label: '大牌率', data: D.criticalRate, backgroundColor: '#F2CC8F' },
+  { label: '放大槍率', data: D.beCriticalRate, backgroundColor: '#E07A5F' },
 ]);
 
 bar('chartDefense', '放槍率 / 被摸率 / 流局率', [

@@ -60,8 +60,8 @@ export default function ListView({ stats, onOpenHistory }: Props) {
               <th onClick={() => handleSort('overallWin')}>勝率{sortIcon('overallWin')}</th>
               <th onClick={() => handleSort('discard')}>放槍率{sortIcon('discard')}</th>
               <th onClick={() => handleSort('beDrawn')}>被摸率{sortIcon('beDrawn')}</th>
-              <th onClick={() => handleSort('critical')}>爆擊率{sortIcon('critical')}</th>
-              <th onClick={() => handleSort('beCritical')}>被爆率{sortIcon('beCritical')}</th>
+              <th onClick={() => handleSort('critical')}>大牌率{sortIcon('critical')}</th>
+              <th onClick={() => handleSort('beCritical')}>放大槍率{sortIcon('beCritical')}</th>
               <th onClick={() => handleSort('drawRate')}>流局率{sortIcon('drawRate')}</th>
               <th onClick={() => handleSort('total')}>局數{sortIcon('total')}</th>
             </tr>

@@ -128,12 +128,12 @@ export default function RoundRecorder({ tableSession, onSave, initialData, editM
     const wName = getPlayerName(winnerId);
     if (resultType === 'selfDraw') {
       if (tai === null) return `${wName}自摸`;
-      return `${wName}自摸，${tai} 台${isCritical ? '，爆擊' : ''}`;
+      return `${wName}自摸，${tai} 台${isCritical ? '，大牌' : ''}`;
     }
     if (!discarderId) return `${wName}胡牌`;
     const dName = getPlayerName(discarderId);
     if (tai === null) return `${wName}胡牌，${dName}放槍`;
-    return `${wName}胡牌，${dName}放槍，${tai} 台${isCritical ? '，爆擊' : ''}`;
+    return `${wName}胡牌，${dName}放槍，${tai} 台${isCritical ? '，大牌' : ''}`;
   })();
 
   const handleSave = useCallback(async () => {
@@ -206,7 +206,7 @@ export default function RoundRecorder({ tableSession, onSave, initialData, editM
       {needsTai && (
         <div className="tai-section">
           <div className="tai-label-row">
-            <label>台數 {isCritical && <span className="critical-badge">爆擊</span>}</label>
+            <label>台數 {isCritical && <span className="critical-badge">大牌</span>}</label>
             <button className="btn-link btn-calc" onClick={() => setShowCalc(true)}>用計算表算</button>
           </div>
           {taiNote && <p className="tai-note">{taiNote}</p>}

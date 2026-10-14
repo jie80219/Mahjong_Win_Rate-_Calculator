@@ -21,10 +21,10 @@ function roundSummary(r: Round): string {
   const winner = r.winnerId ? getPlayerName(r.winnerId) : '?';
   const isCritical = r.tai !== null && r.tai >= 5;
   if (r.resultType === 'selfDraw') {
-    return `${winner}自摸 ${r.tai} 台${isCritical ? ' 爆擊' : ''}`;
+    return `${winner}自摸 ${r.tai} 台${isCritical ? ' 大牌' : ''}`;
   }
   const discarder = r.discarderId ? getPlayerName(r.discarderId) : '?';
-  return `${winner}胡牌，${discarder}放槍 ${r.tai} 台${isCritical ? ' 爆擊' : ''}`;
+  return `${winner}胡牌，${discarder}放槍 ${r.tai} 台${isCritical ? ' 大牌' : ''}`;
 }
 
 function matchesFilter(r: Round, filter: { playerId?: string; metric?: string } | null): boolean {
@@ -125,7 +125,7 @@ export default function HistoryPanel({ rounds, tableSession, sessions, filter, o
                   <div className="history-main">
                     <span className="history-seq">#{r.sequence}</span>
                     <span className="history-summary">{roundSummary(r)}</span>
-                    {r.tai !== null && r.tai >= 5 && <span className="critical-badge">爆擊</span>}
+                    {r.tai !== null && r.tai >= 5 && <span className="critical-badge">大牌</span>}
                   </div>
                   {r.taiNote && <div className="history-tai-note">{r.taiNote}</div>}
                   <div className="history-meta">

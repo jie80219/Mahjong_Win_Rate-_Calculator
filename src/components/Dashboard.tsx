@@ -31,8 +31,8 @@ const METRICS: { key: MetricKey; label: string }[] = [
   { key: 'overallWin', label: '勝率' },
   { key: 'discard', label: '放槍' },
   { key: 'beDrawn', label: '被摸' },
-  { key: 'critical', label: '爆擊' },
-  { key: 'beCritical', label: '被爆' },
+  { key: 'critical', label: '大牌' },
+  { key: 'beCritical', label: '放大槍' },
   { key: 'drawRate', label: '流局' },
   { key: 'money', label: '金額' },
 ];
@@ -106,7 +106,7 @@ export default function Dashboard({
     }
   })();
 
-  const settingSummary = `有效局為分母 · 被爆僅放槍 · ${dateLabel}`;
+  const settingSummary = `有效局為分母 · 放大槍只算放槍 · ${dateLabel}`;
 
   const totalRounds = rounds.length;
   const effectiveRounds = rounds.filter(r => r.resultType !== 'draw').length;

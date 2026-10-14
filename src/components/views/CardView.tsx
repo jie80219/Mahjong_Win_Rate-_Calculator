@@ -53,12 +53,12 @@ export default function CardView({ stats, onOpenHistory, cumulativeMoney }: Prop
               <span className="stat-detail">{s.beDrawn}/{s.effective}</span>
             </div>
             <div className="card-stat" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'critical' })}>
-              <span className="stat-label">爆擊率</span>
+              <span className="stat-label">大牌率</span>
               <span className="stat-value">{formatRate(s.criticalRate)}</span>
               <span className="stat-detail">{s.criticals}/{s.effective}</span>
             </div>
             <div className="card-stat" onClick={() => onOpenHistory({ playerId: s.playerId, metric: 'beCritical' })}>
-              <span className="stat-label">被爆率</span>
+              <span className="stat-label">放大槍率</span>
               <span className="stat-value">{formatRate(s.beCriticalRate)}</span>
               <span className="stat-detail">{s.beCriticals}/{s.effective}</span>
             </div>
@@ -70,7 +70,7 @@ export default function CardView({ stats, onOpenHistory, cumulativeMoney }: Prop
           </div>
           {s.criticalInWinRate !== null && (
             <div className="card-extra">
-              胡牌中的爆擊占比：{formatRate(s.criticalInWinRate)}
+              胡牌中的大牌占比：{formatRate(s.criticalInWinRate)}
             </div>
           )}
         </div>

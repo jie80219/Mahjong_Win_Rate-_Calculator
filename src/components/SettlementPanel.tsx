@@ -90,7 +90,7 @@ export default function SettlementPanel({ session, rounds, onClose, ended }: Pro
       const dc = topBy('discards');
       if (dc) highlights.push({ icon: '🎁', label: '放槍王', value: `${dc.names} ×${dc.max}` });
       const cr = topBy('criticals');
-      if (cr) highlights.push({ icon: '💥', label: '爆擊手', value: `${cr.names} ×${cr.max}` });
+      if (cr) highlights.push({ icon: '🌟', label: '大牌王', value: `${cr.names} ×${cr.max}` });
 
       const blob = await drawReportCard({
         title: '今日戰報',
