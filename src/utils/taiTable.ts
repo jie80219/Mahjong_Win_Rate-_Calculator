@@ -51,6 +51,7 @@ export const TAI_GROUPS: TaiGroup[] = [
       { key: 'qianggang', name: '搶槓', tai: 1, desc: '胡別人加槓的那張牌' },
       { key: 'haidi', name: '海底撈月', tai: 1, desc: '摸最後一張牌自摸' },
       { key: 'hedi', name: '河底撈魚', tai: 1, desc: '胡最後一張打出的牌' },
+      { key: 'migi', name: 'Migi', tai: 8, desc: '四家皆門清，且在 8 張牌以內（含）喊出', excludes: ['quanqiu', 'banqiu'] },
     ],
   },
   {
@@ -86,9 +87,8 @@ export const TAI_GROUPS: TaiGroup[] = [
     ],
   },
   {
-    title: '家規',
+    title: '骰規',
     items: [
-      { key: 'migi', name: 'Migi', tai: 8, desc: '四家皆門清，且在 8 張牌以內（含）喊出', excludes: ['quanqiu', 'banqiu'] },
       { key: 'diceRed', name: '骰規全紅', tai: 1, desc: '三顆骰子都是紅點（1 或 4）', excludes: ['diceStraight'] },
       { key: 'diceStraight', name: '骰規順子', tai: 2, desc: '三顆骰子點數連號，例如 2-3-4', excludes: ['diceRed'] },
     ],
