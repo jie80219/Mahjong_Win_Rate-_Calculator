@@ -5,6 +5,17 @@ const WINDS: WindName[] = ['東', '南', '西', '北'];
 export interface RoundDealer {
   dealerId: string;
   consecutive: number;
+  /** 莊家座位（0–3），也就是第幾局 */
+  dealerIdx?: number;
+  /** 當局的圈風（0 = 東風，4 = 第二將東風） */
+  windCount?: number;
+}
+
+/** 例如「南風西・連1」；舊牌局沒有座位資料時回傳空字串 */
+export function roundDealerLabel(d: RoundDealer | undefined): string {
+  if (!d || d.dealerIdx === undefined || d.windCount === undefined) return '';
+  const jiang = Math.floor(d.windCount / 4) + 1;
+  return `${jiang > 1 ? `第${jiang}將 ` : ''}${windLabel(d.windCount, d.dealerIdx)}${d.consecutive > 0 ? `・連${d.consecutive}` : ''}`;
 }
 
 export interface DealerTimeline {
@@ -78,7 +89,7 @@ export function computeDealerTimeline(
     applyOverridesUpTo(r.sequence);
 
     const dealerId = seat[dealerIdx];
-    byRound.set(r.id, { dealerId, consecutive });
+    byRound.set(r.id, { dealerId, consecutive, dealerIdx, windCount });
 
     const dealerStays = r.resultType === 'draw' || r.winnerId === dealerId;
     if (dealerStays) {

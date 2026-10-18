@@ -37,35 +37,164 @@ async function pipe(bytes: Uint8Array, stream: CompressionStream | Decompression
   return new Uint8Array(await new Response(out).arrayBuffer());
 }
 
-export async function encodeShare(session: TableSession, rounds: Round[]): Promise<string> {
+/*
+ * v2 精簡格式（網址大約短一半以上）：
+ * - 不帶每局的隨機 ID，匯入時用「牌桌 ID-局數」產生（合併時整桌牌局會一起取代，不影響）
+ * - 時間只記跟上一局差幾秒（36 進位）
+ * - 玩家、座位都用 0–3 的位置表示，牌桌設定只帶必要欄位
+ * - 每局寫成一小段文字，例如「d125+gk」= 放槍胡、贏家 1、放槍 2、5 台、距上一局 596 秒；
+ *   有倍率加「*倍數」，局數不連號（中間刪過局）加「^跳幾號」
+ */
+type SharePayloadV2 = [
+  v: 2,
+  sessionId: string,
+  /** 開桌時間（epoch 秒，36 進位） */
+  started: string,
+  /** 結束時間，未結束為空字串 */
+  ended: string,
+  baseMoney: number | null,
+  taiMoney: number | null,
+  /** s = 標準、l = 僅閒家自摸 */
+  rule: string,
+  initialDealerIndex: number,
+  /** 目前座位、起始座位：例如 "0123"，數字是 playerIds 的位置 */
+  seat: string,
+  initialSeat: string,
+  /** 莊家調整：「局數.莊位.連莊.座位.圈風」，多筆用 ; 分隔 */
+  overrides: string,
+  /** [玩家 ID, 名字]，依 playerIds 順序 */
+  players: [string, string][],
+  rounds: string,
+  /** [局數, 牌型] */
+  notes: [number, string][],
+];
+
+const b36 = (n: number) => Math.round(n).toString(36);
+const fromB36 = (s: string) => parseInt(s, 36);
+const toSec = (iso: string) => Math.round(Date.parse(iso) / 1000);
+const fromSec = (sec: number) => new Date(sec * 1000).toISOString();
+
+const ROUND_RE = /^([sdx])([0-3_])([0-3_])(\d*)(?:\*(\d+))?(?:\^(\d+))?\+(-?[0-9a-z]+)$/;
+
+function encodeV2(session: TableSession, rounds: Round[]): SharePayloadV2 {
   const players = [...session.playerIds];
-  const idx = (id: string | null) => (id ? players.indexOf(id) : -1);
-  const payload: SharePayload = {
-    v: 1,
-    s: session,
-    n: Object.fromEntries(players.map(id => [id, getPlayerName(id)])),
-    r: rounds
-      .filter(r => r.tableSessionId === session.id)
-      .sort((a, b) => a.sequence - b.sequence)
-      .map(r => [
-        r.id,
-        r.sequence,
-        Math.round(Date.parse(r.playedAt) / 1000),
-        TYPE_CODE[r.resultType],
-        idx(r.winnerId),
-        idx(r.discarderId),
-        r.tai ?? -1,
-        // 有倍率時牌型欄位要佔位，倍率才會在第 9 格
-        ...((r.multiplier ?? 1) > 1 ? [r.taiNote ?? '', r.multiplier] : r.taiNote ? [r.taiNote] : []),
-      ] as SharePayload['r'][number]),
+  const pos = (id: string | null) => (id && players.includes(id) ? String(players.indexOf(id)) : '_');
+  const seatStr = (seat?: string[]) => (seat ?? players).map(id => players.indexOf(id)).join('');
+  const started = toSec(session.startedAt);
+
+  let prev = started;
+  let prevSeq = 0;
+  const sorted = rounds
+    .filter(r => r.tableSessionId === session.id)
+    .sort((a, b) => a.sequence - b.sequence);
+  const roundStr = sorted.map(r => {
+    const t = toSec(r.playedAt);
+    const mult = (r.multiplier ?? 1) > 1 ? `*${r.multiplier}` : '';
+    const gap = r.sequence - prevSeq === 1 ? '' : `^${r.sequence - prevSeq}`;
+    const s = `${TYPE_CODE[r.resultType]}${pos(r.winnerId)}${pos(r.discarderId)}${r.tai ?? ''}${mult}${gap}+${b36(t - prev)}`;
+    prev = t;
+    prevSeq = r.sequence;
+    return s;
+  }).join(',');
+
+  const overrides = (session.dealerOverrides ?? []).map(o => [
+    o.afterSequence,
+    o.dealerIndex,
+    o.consecutive,
+    o.seatOrder ? seatStr(o.seatOrder) : '',
+    o.windCount ?? (o.rotations !== undefined ? Math.floor(o.rotations / 4) : ''),
+  ].join('.')).join(';');
+
+  return [
+    2,
+    session.id,
+    b36(started),
+    session.endedAt ? b36(toSec(session.endedAt)) : '',
+    session.baseMoney ?? null,
+    session.taiMoney ?? null,
+    session.dealerRule === 'standard' ? 's' : session.dealerRule === 'legacy' ? 'l' : '',
+    session.initialDealerIndex ?? 0,
+    seatStr(session.seatOrder),
+    seatStr(session.initialSeatOrder ?? session.seatOrder),
+    overrides,
+    players.map(id => [id, getPlayerName(id)]),
+    roundStr,
+    sorted.filter(r => r.taiNote).map(r => [r.sequence, r.taiNote!]),
+  ];
+}
+
+function decodeV2(p: SharePayloadV2): SharedTable {
+  const [, sessionId, started, ended, baseMoney, taiMoney, rule, initialDealerIndex, seat, initialSeat, overrides, players, roundStr, notes] = p;
+  const ids = players.map(([id]) => id) as [string, string, string, string];
+  if (ids.length !== 4) throw new Error('格式不符');
+  const toSeat = (s: string) => s.split('').map(i => ids[Number(i)]) as [string, string, string, string];
+
+  const session: TableSession = {
+    id: sessionId,
+    playerIds: ids,
+    seatOrder: toSeat(seat),
+    initialSeatOrder: toSeat(initialSeat),
+    initialDealerIndex,
+    ...(baseMoney !== null ? { baseMoney } : {}),
+    ...(taiMoney !== null ? { taiMoney } : {}),
+    ...(rule ? { dealerRule: rule === 's' ? 'standard' as const : 'legacy' as const } : {}),
+    ...(overrides ? {
+      dealerOverrides: overrides.split(';').map(o => {
+        const [after, dealer, cons, st, wind] = o.split('.');
+        return {
+          afterSequence: Number(after),
+          dealerIndex: Number(dealer),
+          consecutive: Number(cons),
+          ...(st ? { seatOrder: toSeat(st) } : {}),
+          ...(wind !== undefined && wind !== '' ? { windCount: Number(wind) } : {}),
+        };
+      }),
+    } : {}),
+    startedAt: fromSec(fromB36(started)),
+    endedAt: ended ? fromSec(fromB36(ended)) : null,
   };
-  const json = new TextEncoder().encode(JSON.stringify(payload));
+
+  const noteBySeq = new Map(notes);
+  let t = fromB36(started);
+  let sequence = 0;
+  const rounds: Round[] = roundStr ? roundStr.split(',').map(s => {
+    const m = ROUND_RE.exec(s);
+    if (!m) throw new Error('格式不符');
+    const [, code, w, d, tai, mult, gap, dt] = m;
+    t += fromB36(dt);
+    sequence += gap ? Number(gap) : 1;
+    const iso = fromSec(t);
+    const taiNote = noteBySeq.get(sequence);
+    return {
+      id: `${sessionId}-${sequence}`,
+      tableSessionId: sessionId,
+      sequence,
+      playedAt: iso,
+      resultType: CODE_TYPE[code],
+      winnerId: w === '_' ? null : ids[Number(w)],
+      discarderId: d === '_' ? null : ids[Number(d)],
+      tai: tai === '' ? null : Number(tai),
+      ...(taiNote ? { taiNote } : {}),
+      ...(mult ? { multiplier: Number(mult) } : {}),
+      createdAt: iso,
+      updatedAt: iso,
+    };
+  }) : [];
+
+  return { session, rounds, names: Object.fromEntries(players) };
+}
+
+export async function encodeShare(session: TableSession, rounds: Round[]): Promise<string> {
+  const json = new TextEncoder().encode(JSON.stringify(encodeV2(session, rounds)));
   return toBase64Url(await pipe(json, new CompressionStream('deflate-raw')));
 }
 
 export async function decodeShare(data: string): Promise<SharedTable> {
   const bytes = await pipe(fromBase64Url(data), new DecompressionStream('deflate-raw'));
-  const payload = JSON.parse(new TextDecoder().decode(bytes)) as SharePayload;
+  const parsed = JSON.parse(new TextDecoder().decode(bytes));
+  if (Array.isArray(parsed) && parsed[0] === 2) return decodeV2(parsed as SharePayloadV2);
+  // 舊版（v1）分享連結
+  const payload = parsed as SharePayload;
   if (payload.v !== 1 || !payload.s?.id || !Array.isArray(payload.r)) throw new Error('格式不符');
   const players = [...payload.s.playerIds];
   const rounds: Round[] = payload.r.map(([id, sequence, ts, code, w, d, tai, taiNote, multiplier]) => {

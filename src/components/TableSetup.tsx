@@ -28,7 +28,6 @@ export default function TableSetup({ players, sessions, onStartTable, onResumeSe
   const [selected, setSelected] = useState<string[]>([]);
   const [step, setStep] = useState<Step>('select');
   const [seatOrder, setSeatOrder] = useState<string[]>([]);
-  const [dealerIndex, setDealerIndex] = useState<number>(0);
   const [baseMoneyStr, setBaseMoneyStr] = useState('100');
   const [taiMoneyStr, setTaiMoneyStr] = useState('100');
   const [dealerRule, setDealerRule] = useState<DealerRule>('standard');
@@ -63,7 +62,6 @@ export default function TableSetup({ players, sessions, onStartTable, onResumeSe
 
   const goToSeatStep = useCallback(() => {
     setSeatOrder([...selected]);
-    setDealerIndex(0);
     setStep('seat');
   }, [selected]);
 
@@ -72,40 +70,43 @@ export default function TableSetup({ players, sessions, onStartTable, onResumeSe
     setSeatOrder(prev => {
       const next = [...prev];
       [next[index - 1], next[index]] = [next[index], next[index - 1]];
-      if (dealerIndex === index) setDealerIndex(index - 1);
-      else if (dealerIndex === index - 1) setDealerIndex(index);
       return next;
     });
-  }, [dealerIndex]);
+  }, []);
+
+  // 起莊的人一定坐東：點誰當莊，就把座位整圈轉到他在東，其他人依原本順序排成南、西、北
+  const makeDealer = useCallback((index: number) => {
+    setSeatOrder(prev => [...prev.slice(index), ...prev.slice(0, index)]);
+  }, []);
 
   const handleConfirmStart = useCallback(() => {
     onStartTable({
       playerIds: selected as [string, string, string, string],
       seatOrder: seatOrder as [string, string, string, string],
-      initialDealerIndex: dealerIndex,
+      initialDealerIndex: 0,
       baseMoney: Math.max(0, Number(baseMoneyStr) || 0),
       taiMoney: Math.max(0, Number(taiMoneyStr) || 0),
       dealerRule,
     });
-  }, [selected, seatOrder, dealerIndex, baseMoneyStr, taiMoneyStr, dealerRule, onStartTable]);
+  }, [selected, seatOrder, baseMoneyStr, taiMoneyStr, dealerRule, onStartTable]);
 
   if (step === 'seat') {
     return (
       <div className="table-setup">
         <h2>設定座位順序與莊家</h2>
-        <p className="setup-hint">調整輪轉順序，並選擇起始莊家</p>
+        <p className="setup-hint">起莊的人固定坐東，其他人依輪轉順序為南、西、北</p>
 
         <div className="seat-slots">
           {seatOrder.map((pid, i) => (
             <div
               key={pid}
-              className={`seat-slot filled ${dealerIndex === i ? 'dealer' : ''}`}
-              onClick={() => setDealerIndex(i)}
+              className={`seat-slot filled ${i === 0 ? 'dealer' : ''}`}
+              onClick={() => makeDealer(i)}
             >
               <div className="seat-content">
                 <span className="seat-wind-label">{WINDS[i]}</span>
                 <span>
-                  {dealerIndex === i && <span className="dealer-badge">莊</span>}
+                  {i === 0 && <span className="dealer-badge">莊</span>}
                   {getPlayerName(pid)}
                 </span>
                 <div className="seat-actions">
@@ -117,7 +118,7 @@ export default function TableSetup({ players, sessions, onStartTable, onResumeSe
           ))}
         </div>
 
-        <p className="setup-hint">點擊玩家選為莊家，用箭頭調整順序</p>
+        <p className="setup-hint">點玩家設為起莊（會自動轉到東），用箭頭調整順序；坐東的人就是莊家</p>
 
         <div className="money-settings">
           <h3>金額設定</h3>

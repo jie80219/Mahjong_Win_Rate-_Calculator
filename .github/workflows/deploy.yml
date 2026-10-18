@@ -23,6 +23,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # 測試沒過就不部署，避免把算錯的版本推上線
+      - run: npm test
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:

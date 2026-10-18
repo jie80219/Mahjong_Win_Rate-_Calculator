@@ -3,7 +3,7 @@ import type { TableSession, ResultType, Round } from '../types';
 import { getPlayerName } from '../db/players';
 import { nowISO } from '../utils/id';
 import { leopardMultiplier } from '../utils/taiTable';
-import { loadSeatRotation, saveSeatRotation } from '../utils/preferences';
+import { loadSeatRotation, saveSeatRotation, loadMe, saveMe } from '../utils/preferences';
 import TaiCalculator from './TaiCalculator';
 
 interface Props {
@@ -31,10 +31,20 @@ export default function RoundRecorder({ tableSession, onSave, initialData, editM
   const [taiNote, setTaiNote] = useState(initialData?.taiNote ?? '');
   const [showCalc, setShowCalc] = useState(false);
   const [multiplier, setMultiplier] = useState(initialData?.multiplier ?? 1);
-  const [rotation, setRotation] = useState(() => loadSeatRotation(tableSession.id));
+  const [manualRotation, setRotation] = useState(() => loadSeatRotation(tableSession.id));
+  const [me, setMe] = useState(loadMe);
 
   const seats = tableSession.seatOrder ?? tableSession.playerIds;
+  // 設定了「我是誰」且我在這桌：自動把我轉到下方；否則用手動轉的方向
+  const mySeat = me ? seats.indexOf(me) : -1;
+  const rotation = mySeat >= 0 ? (4 - mySeat) % 4 : manualRotation;
   const bottomWind = WINDS[(4 - rotation) % 4];
+
+  const changeMe = useCallback((pid: string) => {
+    const next = pid || null;
+    saveMe(next);
+    setMe(next);
+  }, []);
 
   const rotate = useCallback((step: number) => {
     setRotation(prev => {
@@ -223,9 +233,22 @@ export default function RoundRecorder({ tableSession, onSave, initialData, editM
       </div>
 
       <div className="mj-rotate-bar">
-        <button className="btn-icon-sm" onClick={() => rotate(-1)} aria-label="桌位逆時針轉">⟲</button>
-        <span>轉動桌位・下方是{bottomWind}家</span>
-        <button className="btn-icon-sm" onClick={() => rotate(1)} aria-label="桌位順時針轉">⟳</button>
+        <label>
+          我是
+          <select value={mySeat >= 0 ? me! : ''} onChange={e => changeMe(e.target.value)}>
+            <option value="">未設定</option>
+            {seats.map(pid => <option key={pid} value={pid}>{getPlayerName(pid)}</option>)}
+          </select>
+        </label>
+        {mySeat >= 0 ? (
+          <span>自動轉到下方（{bottomWind}家）</span>
+        ) : (
+          <>
+            <button className="btn-icon-sm" onClick={() => rotate(-1)} aria-label="桌位逆時針轉">⟲</button>
+            <span>下方是{bottomWind}家</span>
+            <button className="btn-icon-sm" onClick={() => rotate(1)} aria-label="桌位順時針轉">⟳</button>
+          </>
+        )}
       </div>
 
       {hint && <p className="recorder-hint">{hint}</p>}

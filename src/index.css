@@ -1779,3 +1779,17 @@ button:disabled {
   color: var(--text);
   font-size: 14px;
 }
+
+/* 牌局紀錄：每局的圈風、局、莊家 */
+.history-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.history-dealer { color: var(--primary); font-weight: 600; }
+.mj-rotate-bar { flex-wrap: wrap; }
+.mj-rotate-bar label { display: inline-flex; align-items: center; gap: 4px; }
+.mj-rotate-bar select {
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+}

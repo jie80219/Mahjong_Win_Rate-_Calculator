@@ -69,3 +69,21 @@ export function saveSeatRotation(sessionId: string, rotation: number): void {
     localStorage.setItem(SEAT_ROTATION_KEY, JSON.stringify(map));
   } catch { /* ignore */ }
 }
+
+const ME_KEY = 'mahjong_me';
+
+/** 這台裝置的使用者是哪位玩家（記錄時自動把他轉到桌子下方） */
+export function loadMe(): string | null {
+  try {
+    return localStorage.getItem(ME_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function saveMe(playerId: string | null): void {
+  try {
+    if (playerId) localStorage.setItem(ME_KEY, playerId);
+    else localStorage.removeItem(ME_KEY);
+  } catch { /* ignore */ }
+}

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import type { Round, TableSession } from '../types';
 import { getPlayerName } from '../db/players';
 import RoundRecorder from './RoundRecorder';
-import { computeDealerTimeline } from '../utils/dealer';
+import { computeDealerTimeline, roundDealerLabel, type RoundDealer } from '../utils/dealer';
 
 interface Props {
   rounds: Round[];
@@ -66,6 +66,18 @@ export default function HistoryPanel({ rounds, tableSession, sessions, filter, o
     }
     return list.sort((a, b) => b.playedAt.localeCompare(a.playedAt));
   }, [rounds, filter]);
+
+  // 每局開打時的圈風、局、莊家、連莊（依各牌桌全部牌局推算）
+  const dealerByRound = useMemo(() => {
+    const map = new Map<string, RoundDealer>();
+    const sessionIds = new Set(rounds.map(r => r.tableSessionId));
+    for (const id of sessionIds) {
+      const s = sessions.find(x => x.id === id) ?? (tableSession.id === id ? tableSession : null);
+      if (!s) continue;
+      for (const [rid, d] of computeDealerTimeline(s, rounds).byRound) map.set(rid, d);
+    }
+    return map;
+  }, [rounds, sessions, tableSession]);
 
   const editingRound = editingId ? rounds.find(r => r.id === editingId) : null;
   const editSession = editingRound
@@ -133,6 +145,11 @@ export default function HistoryPanel({ rounds, tableSession, sessions, filter, o
                   </div>
                   {r.taiNote && <div className="history-tai-note">{r.taiNote}</div>}
                   <div className="history-meta">
+                    {dealerByRound.has(r.id) && (
+                      <span className="history-dealer">
+                        {roundDealerLabel(dealerByRound.get(r.id))}・莊 {getPlayerName(dealerByRound.get(r.id)!.dealerId)}
+                      </span>
+                    )}
                     <span>{new Date(r.playedAt).toLocaleString('zh-TW')}</span>
                   </div>
                   {!readOnly && <div className="history-actions">
