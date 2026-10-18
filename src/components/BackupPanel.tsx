@@ -1,15 +1,20 @@
 import { useState, useCallback, useRef } from 'react';
-import { exportData, exportHtml, validateImport, importData } from '../utils/backup';
+import type { Preferences } from '../types';
+import { exportData, validateImport, importData } from '../utils/backup';
+import { exportReportHtml } from '../report/exportReport';
 import { db } from '../db';
 
 interface Props {
   onClose: () => void;
   onImported: () => Promise<void>;
+  /** 匯出報表時預設打開的牌桌與檢視設定 */
+  activeSessionId: string | null;
+  prefs: Preferences;
 }
 
 type ClearStage = 'idle' | 'stage1' | 'stage2';
 
-export default function BackupPanel({ onClose, onImported }: Props) {
+export default function BackupPanel({ onClose, onImported, activeSessionId, prefs }: Props) {
   const [importPreview, setImportPreview] = useState<{ tableSessions: number; rounds: number; errors: string[] } | null>(null);
   const [importJson, setImportJson] = useState<string>('');
   const [importing, setImporting] = useState(false);
@@ -28,7 +33,7 @@ export default function BackupPanel({ onClose, onImported }: Props) {
   }, []);
 
   const handleExportHtml = useCallback(async () => {
-    const html = await exportHtml();
+    const html = await exportReportHtml(activeSessionId, prefs);
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -36,7 +41,7 @@ export default function BackupPanel({ onClose, onImported }: Props) {
     a.download = `mahjong_report_${new Date().toISOString().slice(0, 10)}.html`;
     a.click();
     URL.revokeObjectURL(url);
-  }, []);
+  }, [activeSessionId, prefs]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

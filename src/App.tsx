@@ -5,11 +5,9 @@ import { useWakeLock } from './hooks/useWakeLock';
 import { db } from './db';
 import { loadPreferences, savePreferences } from './utils/preferences';
 import { getPlayerName } from './db/players';
-import { computePlayerStats, filterRoundsByDate } from './utils/stats';
+import { useDashboardData } from './hooks/useDashboardData';
 import { computeDealerTimeline } from './utils/dealer';
-import {
-  computeAllRoundsMoney, computeMoneyAcrossSessions, computeCumulativeMoney, formatMoney,
-} from './utils/money';
+import { computeAllRoundsMoney, formatMoney } from './utils/money';
 import { computeStreaks, streakAlerts } from './utils/fun';
 import { readShareFromHash } from './utils/share';
 import TableSetup from './components/TableSetup';
@@ -218,34 +216,9 @@ export default function App() {
   }, [refreshAll]);
 
   const scope = prefs.scope;
-  const displayRounds = scope === 'all' ? allRounds : rounds;
-  const filteredRounds = useMemo(
-    () => filterRoundsByDate(displayRounds, prefs.dateRange),
-    [displayRounds, prefs.dateRange],
-  );
-
-  const scopePlayerIds = scope === 'all'
-    ? prefs.selectedPlayerIds
-    : (activeSession?.playerIds ? [...activeSession.playerIds] : []);
-  const statPlayerIds = scopePlayerIds.length > 0 ? scopePlayerIds : (activeSession?.playerIds ? [...activeSession.playerIds] : []);
-
-  const stats = computePlayerStats(filteredRounds, statPlayerIds, tablePlayerMap);
-
-  const tableDraw = activeSession && scope === 'table'
-    ? filteredRounds.filter(r => r.resultType === 'draw' && r.tableSessionId === activeSession.id).length
-    : filteredRounds.filter(r => r.resultType === 'draw').length;
-
-  const roundsMoney = useMemo(() => {
-    if (!activeSession) return [];
-    if (scope === 'all') return computeMoneyAcrossSessions(filteredRounds, sessions, allRounds);
-    return computeAllRoundsMoney(filteredRounds, activeSession, rounds);
-  }, [activeSession, scope, filteredRounds, sessions, allRounds, rounds]);
-
-  const statPlayerKey = statPlayerIds.join(',');
-  const cumulativeMoney = useMemo(
-    () => computeCumulativeMoney(roundsMoney, statPlayerKey ? statPlayerKey.split(',') : []),
-    [roundsMoney, statPlayerKey],
-  );
+  const { filteredRounds, stats, tableDraw, roundsMoney, cumulativeMoney } = useDashboardData({
+    activeSession, rounds, allRounds, sessions, tablePlayerMap, prefs,
+  });
 
   // 剛存的那局金額，顯示在提示裡
   const toastMoney = useMemo(() => {
@@ -473,6 +446,8 @@ export default function App() {
         <BackupPanel
           onClose={() => setShowBackup(false)}
           onImported={refreshAll}
+          activeSessionId={activeSession?.id ?? null}
+          prefs={prefs}
         />
       )}
 

@@ -14,6 +14,8 @@ interface Props {
   onDelete: (id: string) => Promise<void>;
   onClose: () => void;
   tablePlayerMap: Map<string, string[]>;
+  /** 唯讀（HTML 報表用）：只能看，不能編輯或刪除 */
+  readOnly?: boolean;
 }
 
 function roundSummary(r: Round): string {
@@ -52,7 +54,7 @@ function matchesFilter(r: Round, filter: { playerId?: string; metric?: string } 
   }
 }
 
-export default function HistoryPanel({ rounds, tableSession, sessions, filter, onEdit, onDelete, onClose }: Props) {
+export default function HistoryPanel({ rounds, tableSession, sessions, filter, onEdit, onDelete, onClose, readOnly }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteInput, setDeleteInput] = useState('');
@@ -133,7 +135,7 @@ export default function HistoryPanel({ rounds, tableSession, sessions, filter, o
                   <div className="history-meta">
                     <span>{new Date(r.playedAt).toLocaleString('zh-TW')}</span>
                   </div>
-                  <div className="history-actions">
+                  {!readOnly && <div className="history-actions">
                     <button className="btn-link" onClick={() => setEditingId(r.id)}>編輯</button>
                     {deleteConfirm === r.id ? (
                       <div className="delete-confirm-dialog">
@@ -161,7 +163,7 @@ export default function HistoryPanel({ rounds, tableSession, sessions, filter, o
                     ) : (
                       <button className="btn-link btn-danger-text" onClick={() => { setDeleteConfirm(r.id); setDeleteInput(''); }}>刪除</button>
                     )}
-                  </div>
+                  </div>}
                 </div>
               ))
             )}
