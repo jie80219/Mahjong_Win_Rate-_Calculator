@@ -11,11 +11,49 @@ export interface RoundDealer {
   windCount?: number;
 }
 
-/** 例如「南風西・連1」；舊牌局沒有座位資料時回傳空字串 */
-export function roundDealerLabel(d: RoundDealer | undefined): string {
+/** 這張牌桌幾圈算一將（牌桌長度選「不提示」時，分段仍以 4 圈為一將） */
+export function gameWinds(session: Pick<TableSession, 'windsPerGame'>): number {
+  const w = session.windsPerGame;
+  return w !== undefined && w > 0 ? w : 4;
+}
+
+/** 第幾將的名稱：一將「第2將」、半將「第2個半將」、一圈「第2圈」 */
+export function gameName(session: Pick<TableSession, 'windsPerGame'>, n: number): string {
+  const w = gameWinds(session);
+  return w === 2 ? `第${n}個半將` : w === 1 ? `第${n}圈` : `第${n}將`;
+}
+
+/** 例如「第2將 南風西・連1」；舊牌局沒有座位資料時回傳空字串 */
+export function roundDealerLabel(d: RoundDealer | undefined, session: Pick<TableSession, 'windsPerGame'> = {}): string {
   if (!d || d.dealerIdx === undefined || d.windCount === undefined) return '';
-  const jiang = Math.floor(d.windCount / 4) + 1;
-  return `${jiang > 1 ? `第${jiang}將 ` : ''}${windLabel(d.windCount, d.dealerIdx)}${d.consecutive > 0 ? `・連${d.consecutive}` : ''}`;
+  const game = Math.floor(d.windCount / gameWinds(session)) + 1;
+  return `${game > 1 ? `${gameName(session, game)} ` : ''}${windLabel(d.windCount, d.dealerIdx)}${d.consecutive > 0 ? `・連${d.consecutive}` : ''}`;
+}
+
+export interface GameSegment {
+  /** 第幾將（從 1 開始） */
+  index: number;
+  label: string;
+  rounds: Round[];
+}
+
+/** 把一張牌桌的牌局依「將」分段（同一組人打完一將繼續打，就有第二將、第三將…） */
+export function splitGames(session: TableSession, rounds: Round[]): GameSegment[] {
+  const sessionRounds = rounds
+    .filter(r => r.tableSessionId === session.id)
+    .sort((a, b) => a.sequence - b.sequence);
+  const { byRound } = computeDealerTimeline(session, sessionRounds);
+  const w = gameWinds(session);
+  const segments = new Map<number, Round[]>();
+  for (const r of sessionRounds) {
+    const windCount = byRound.get(r.id)?.windCount ?? 0;
+    const index = Math.floor(windCount / w) + 1;
+    if (!segments.has(index)) segments.set(index, []);
+    segments.get(index)!.push(r);
+  }
+  return [...segments.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([index, list]) => ({ index, label: gameName(session, index), rounds: list }));
 }
 
 export interface DealerTimeline {
@@ -113,8 +151,9 @@ export function computeDealerTimeline(
       wind: WINDS[windCount % 4],
       windRound: dealerIdx + 1,
       windCount,
-      jiang: Math.floor(windCount / 4) + 1,
-      jiangComplete: wrapped && windCount > 0 && windCount % 4 === 0,
+      jiang: Math.floor(windCount / gameWinds(session)) + 1,
+      // 牌桌長度選「不提示」（0）時不提示結算
+      jiangComplete: session.windsPerGame !== 0 && wrapped && windCount > 0 && windCount % gameWinds(session) === 0,
     },
   };
 }

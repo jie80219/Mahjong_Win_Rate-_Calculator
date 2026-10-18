@@ -67,6 +67,8 @@ type SharePayloadV2 = [
   rounds: string,
   /** [局數, 牌型] */
   notes: [number, string][],
+  /** 牌桌長度（幾圈一將），沒設定就省略 */
+  windsPerGame?: number,
 ];
 
 const b36 = (n: number) => Math.round(n).toString(36);
@@ -120,11 +122,12 @@ function encodeV2(session: TableSession, rounds: Round[]): SharePayloadV2 {
     players.map(id => [id, getPlayerName(id)]),
     roundStr,
     sorted.filter(r => r.taiNote).map(r => [r.sequence, r.taiNote!]),
-  ];
+    ...(session.windsPerGame !== undefined ? [session.windsPerGame] : []),
+  ] as SharePayloadV2;
 }
 
 function decodeV2(p: SharePayloadV2): SharedTable {
-  const [, sessionId, started, ended, baseMoney, taiMoney, rule, initialDealerIndex, seat, initialSeat, overrides, players, roundStr, notes] = p;
+  const [, sessionId, started, ended, baseMoney, taiMoney, rule, initialDealerIndex, seat, initialSeat, overrides, players, roundStr, notes, windsPerGame] = p;
   const ids = players.map(([id]) => id) as [string, string, string, string];
   if (ids.length !== 4) throw new Error('格式不符');
   const toSeat = (s: string) => s.split('').map(i => ids[Number(i)]) as [string, string, string, string];
@@ -137,6 +140,7 @@ function decodeV2(p: SharePayloadV2): SharedTable {
     initialDealerIndex,
     ...(baseMoney !== null ? { baseMoney } : {}),
     ...(taiMoney !== null ? { taiMoney } : {}),
+    ...(windsPerGame !== undefined ? { windsPerGame } : {}),
     ...(rule ? { dealerRule: rule === 's' ? 'standard' as const : 'legacy' as const } : {}),
     ...(overrides ? {
       dealerOverrides: overrides.split(';').map(o => {

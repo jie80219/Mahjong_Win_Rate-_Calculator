@@ -6,7 +6,7 @@ import { db } from './db';
 import { loadPreferences, savePreferences } from './utils/preferences';
 import { getPlayerName } from './db/players';
 import { useDashboardData } from './hooks/useDashboardData';
-import { computeDealerTimeline } from './utils/dealer';
+import { computeDealerTimeline, gameName, windLabel } from './utils/dealer';
 import { computeAllRoundsMoney, formatMoney } from './utils/money';
 import { computeStreaks, streakAlerts } from './utils/fun';
 import { readShareFromHash } from './utils/share';
@@ -106,9 +106,10 @@ export default function App() {
     baseMoney: number;
     taiMoney: number;
     dealerRule: DealerRule;
+    windsPerGame: number;
   }) => {
     const session = await createSession(
-      args.playerIds, args.seatOrder, args.initialDealerIndex, args.baseMoney, args.taiMoney, args.dealerRule,
+      args.playerIds, args.seatOrder, args.initialDealerIndex, args.baseMoney, args.taiMoney, args.dealerRule, args.windsPerGame,
     );
     await refreshMap();
     setActiveSession(session);
@@ -310,7 +311,7 @@ export default function App() {
               {dealerState && (
                 <div className="dealer-info-bar">
                   <div className="dealer-info-main">
-                    {dealerState.jiang > 1 && <span className="dealer-jiang">第{dealerState.jiang}將</span>}
+                    {dealerState.jiang > 1 && <span className="dealer-jiang">{gameName(activeSession, dealerState.jiang)}</span>}
                     <span className="dealer-wind">{dealerState.wind}風{'東南西北'[dealerState.windRound - 1]}</span>
                     <span className="dealer-current">
                       <span className="dealer-badge">莊</span>
@@ -330,7 +331,7 @@ export default function App() {
 
               {dealerState?.jiangComplete && (
                 <div className="jiang-banner">
-                  <p>🀄 第 {dealerState.jiang - 1} 將（北風北）已打完！</p>
+                  <p>🀄 {gameName(activeSession, dealerState.jiang - 1)}（{windLabel(dealerState.windCount - 1, 3)}）已打完！</p>
                   <div className="jiang-actions">
                     <button className="btn-primary btn-sm" onClick={() => setConfirmEnd(true)}>結束牌桌並結算</button>
                     <span className="setup-hint">或直接記錄下一局繼續打</span>
@@ -452,8 +453,6 @@ export default function App() {
         <BackupPanel
           onClose={() => setShowBackup(false)}
           onImported={refreshAll}
-          activeSessionId={activeSession?.id ?? null}
-          prefs={prefs}
         />
       )}
 

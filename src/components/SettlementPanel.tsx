@@ -4,6 +4,7 @@ import { getPlayerName } from '../db/players';
 import { computeAllRoundsMoney, computeCumulativeMoney, computeSettlement, formatMoney } from '../utils/money';
 import { computePlayerStats } from '../utils/stats';
 import { drawReportCard, type ReportCardData } from '../utils/reportCard';
+import { splitGames } from '../utils/dealer';
 
 interface Props {
   session: TableSession;
@@ -20,12 +21,18 @@ export default function SettlementPanel({ session, rounds, onClose, ended }: Pro
   const [generating, setGenerating] = useState(false);
 
   const playerIds = useMemo(() => [...session.playerIds], [session]);
-  const sessionRounds = useMemo(() => rounds.filter(r => r.tableSessionId === session.id), [rounds, session.id]);
+  const allSessionRounds = useMemo(() => rounds.filter(r => r.tableSessionId === session.id), [rounds, session.id]);
+  // 同一組人打完一將繼續打會有第二將…，可以選全部或單看某一將
+  const games = useMemo(() => splitGames(session, allSessionRounds), [session, allSessionRounds]);
+  const [gameIndex, setGameIndex] = useState<number | null>(null);
+  const game = gameIndex === null ? null : games.find(g => g.index === gameIndex) ?? null;
+  const sessionRounds = game ? game.rounds : allSessionRounds;
+  const gameText = game ? ` ${game.label}` : '';
   const hasMoney = (session.baseMoney ?? 0) > 0 || (session.taiMoney ?? 0) > 0;
 
   const totals = useMemo(
-    () => computeCumulativeMoney(computeAllRoundsMoney(sessionRounds, session), playerIds),
-    [sessionRounds, session, playerIds],
+    () => computeCumulativeMoney(computeAllRoundsMoney(sessionRounds, session, allSessionRounds), playerIds),
+    [sessionRounds, session, allSessionRounds, playerIds],
   );
   const transfers = useMemo(() => computeSettlement(totals), [totals]);
   const stats = useMemo(
@@ -45,7 +52,7 @@ export default function SettlementPanel({ session, rounds, onClose, ended }: Pro
   const drawCount = sessionRounds.filter(r => r.resultType === 'draw').length;
 
   const settlementText = useMemo(() => {
-    const lines = [`🀄 麻將結算 ${dateText}`, `共 ${sessionRounds.length} 局（流局 ${drawCount}）`];
+    const lines = [`🀄 麻將結算 ${dateText}${gameText}`, `共 ${sessionRounds.length} 局（流局 ${drawCount}）`];
     if (hasMoney) lines.push(`底 ${session.baseMoney ?? 0} / 台 ${session.taiMoney ?? 0}`);
     lines.push('');
     for (const r of ranking) {
@@ -56,9 +63,17 @@ export default function SettlementPanel({ session, rounds, onClose, ended }: Pro
       for (const t of transfers) lines.push(`${getPlayerName(t.from)} → ${getPlayerName(t.to)}　$${t.amount.toLocaleString()}`);
     }
     return lines.join('\n');
-  }, [dateText, sessionRounds.length, drawCount, hasMoney, session, ranking, transfers]);
+  }, [dateText, gameText, sessionRounds.length, drawCount, hasMoney, session, ranking, transfers]);
 
   useEffect(() => () => { if (cardUrl) URL.revokeObjectURL(cardUrl); }, [cardUrl]);
+
+  const selectGame = (index: number | null) => {
+    setGameIndex(index);
+    // 換了範圍，舊的圖卡就不對了
+    if (cardUrl) URL.revokeObjectURL(cardUrl);
+    setCardUrl(null);
+    setCardBlob(null);
+  };
 
   const handleCopy = async () => {
     try {
@@ -93,7 +108,7 @@ export default function SettlementPanel({ session, rounds, onClose, ended }: Pro
       if (cr) highlights.push({ icon: '🌟', label: '大牌王', value: `${cr.names} ×${cr.max}` });
 
       const blob = await drawReportCard({
-        title: '今日戰報',
+        title: `今日戰報${gameText}`,
         dateText,
         roundsText: `共 ${sessionRounds.length} 局`,
         hasMoney,
@@ -128,7 +143,18 @@ export default function SettlementPanel({ session, rounds, onClose, ended }: Pro
           <button className="btn-icon" onClick={onClose}>✕</button>
         </div>
 
-        <p className="setup-hint">{dateText}・共 {sessionRounds.length} 局（流局 {drawCount}）</p>
+        {games.length > 1 && (
+          <div className="dealer-rule-options settle-games">
+            <button className={`date-btn ${gameIndex === null ? 'active' : ''}`} onClick={() => selectGame(null)}>全部</button>
+            {games.map(g => (
+              <button key={g.index} className={`date-btn ${gameIndex === g.index ? 'active' : ''}`} onClick={() => selectGame(g.index)}>
+                {g.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <p className="setup-hint">{dateText}{gameText}・共 {sessionRounds.length} 局（流局 {drawCount}）</p>
 
         <div className="settle-ranking">
           {ranking.map((r, i) => (

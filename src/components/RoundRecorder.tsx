@@ -3,6 +3,7 @@ import type { TableSession, ResultType, Round } from '../types';
 import { getPlayerName } from '../db/players';
 import { nowISO } from '../utils/id';
 import { leopardMultiplier } from '../utils/taiTable';
+import { isCriticalTai } from '../utils/rules';
 import { loadSeatRotation, saveSeatRotation, loadMe, saveMe } from '../utils/preferences';
 import TaiCalculator from './TaiCalculator';
 
@@ -129,7 +130,7 @@ export default function RoundRecorder({ tableSession, onSave, initialData, editM
     setShowCalc(false);
   }, []);
 
-  const isCritical = tai !== null && tai >= 5;
+  const isCritical = isCriticalTai(tai);
   const needsTai = resultType === 'selfDraw' || resultType === 'discardWin';
 
   const canSave = (() => {
@@ -155,7 +156,7 @@ export default function RoundRecorder({ tableSession, onSave, initialData, editM
     if (resultType === 'draw') return '流局';
     if (!winnerId) return '';
     const wName = getPlayerName(winnerId);
-    const extra = `${isCritical ? '，大牌' : ''}${multiplier > 1 ? `，豹子 ×${multiplier}` : ''}`;
+    const extra = `${isCritical ? '，大牌' : ''}${multiplier > 1 ? `，金額 ×${multiplier}` : ''}`;
     if (resultType === 'selfDraw') {
       if (tai === null) return `${wName}自摸`;
       return `${wName}自摸，${tai} 台${extra}`;
@@ -264,7 +265,7 @@ export default function RoundRecorder({ tableSession, onSave, initialData, editM
             {TAI_BUTTONS.map(t => (
               <button
                 key={t}
-                className={`tai-btn ${tai === t && !showCustom ? 'active' : ''} ${t >= 5 ? 'critical-tai' : ''}`}
+                className={`tai-btn ${tai === t && !showCustom ? 'active' : ''} ${isCriticalTai(t) ? 'critical-tai' : ''}`}
                 onClick={() => handleTai(t)}
               >
                 {t}

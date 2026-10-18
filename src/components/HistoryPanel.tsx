@@ -3,6 +3,7 @@ import type { Round, TableSession } from '../types';
 import { getPlayerName } from '../db/players';
 import RoundRecorder from './RoundRecorder';
 import { computeDealerTimeline, roundDealerLabel, type RoundDealer } from '../utils/dealer';
+import { isCriticalTai } from '../utils/rules';
 
 interface Props {
   rounds: Round[];
@@ -14,14 +15,12 @@ interface Props {
   onDelete: (id: string) => Promise<void>;
   onClose: () => void;
   tablePlayerMap: Map<string, string[]>;
-  /** 唯讀（HTML 報表用）：只能看，不能編輯或刪除 */
-  readOnly?: boolean;
 }
 
 function roundSummary(r: Round): string {
   if (r.resultType === 'draw') return '流局';
   const winner = r.winnerId ? getPlayerName(r.winnerId) : '?';
-  const isCritical = r.tai !== null && r.tai >= 5;
+  const isCritical = isCriticalTai(r.tai);
   if (r.resultType === 'selfDraw') {
     return `${winner}自摸 ${r.tai} 台${isCritical ? ' 大牌' : ''}`;
   }
@@ -46,15 +45,15 @@ function matchesFilter(r: Round, filter: { playerId?: string; metric?: string } 
     case 'beDrawn':
       return r.resultType === 'selfDraw' && r.winnerId !== playerId;
     case 'critical':
-      return r.winnerId === playerId && r.tai !== null && r.tai >= 5;
+      return r.winnerId === playerId && isCriticalTai(r.tai);
     case 'beCritical':
-      return r.resultType === 'discardWin' && r.discarderId === playerId && r.tai !== null && r.tai >= 5;
+      return r.resultType === 'discardWin' && r.discarderId === playerId && isCriticalTai(r.tai);
     default:
       return r.winnerId === playerId || r.discarderId === playerId;
   }
 }
 
-export default function HistoryPanel({ rounds, tableSession, sessions, filter, onEdit, onDelete, onClose, readOnly }: Props) {
+export default function HistoryPanel({ rounds, tableSession, sessions, filter, onEdit, onDelete, onClose }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteInput, setDeleteInput] = useState('');
@@ -140,19 +139,19 @@ export default function HistoryPanel({ rounds, tableSession, sessions, filter, o
                   <div className="history-main">
                     <span className="history-seq">#{r.sequence}</span>
                     <span className="history-summary">{roundSummary(r)}</span>
-                    {r.tai !== null && r.tai >= 5 && <span className="critical-badge">大牌</span>}
-                    {(r.multiplier ?? 1) > 1 && <span className="leopard-badge">豹子 ×{r.multiplier}</span>}
+                    {isCriticalTai(r.tai) && <span className="critical-badge">大牌</span>}
+                    {(r.multiplier ?? 1) > 1 && <span className="leopard-badge">金額 ×{r.multiplier}</span>}
                   </div>
                   {r.taiNote && <div className="history-tai-note">{r.taiNote}</div>}
                   <div className="history-meta">
                     {dealerByRound.has(r.id) && (
                       <span className="history-dealer">
-                        {roundDealerLabel(dealerByRound.get(r.id))}・莊 {getPlayerName(dealerByRound.get(r.id)!.dealerId)}
+                        {roundDealerLabel(dealerByRound.get(r.id), sessions.find(s => s.id === r.tableSessionId) ?? tableSession)}・莊 {getPlayerName(dealerByRound.get(r.id)!.dealerId)}
                       </span>
                     )}
                     <span>{new Date(r.playedAt).toLocaleString('zh-TW')}</span>
                   </div>
-                  {!readOnly && <div className="history-actions">
+                  <div className="history-actions">
                     <button className="btn-link" onClick={() => setEditingId(r.id)}>編輯</button>
                     {deleteConfirm === r.id ? (
                       <div className="delete-confirm-dialog">
@@ -180,7 +179,7 @@ export default function HistoryPanel({ rounds, tableSession, sessions, filter, o
                     ) : (
                       <button className="btn-link btn-danger-text" onClick={() => { setDeleteConfirm(r.id); setDeleteInput(''); }}>刪除</button>
                     )}
-                  </div>}
+                  </div>
                 </div>
               ))
             )}

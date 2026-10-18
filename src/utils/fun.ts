@@ -1,5 +1,6 @@
 import type { Round, TableSession, ComputedStats } from '../types';
 import { computeDealerTimeline } from './dealer';
+import { getCriticalTai } from './rules';
 
 function chronological(rounds: Round[]): Round[] {
   return [...rounds].sort((a, b) =>
@@ -159,7 +160,7 @@ export function computeTitles(args: {
   };
 
   push('selfDraw', '🀄', '自摸王', topHolders(stats, s => s.selfDraws, s => s.playerId), v => `自摸 ${v} 次`);
-  push('critical', '🌟', '大牌王', topHolders(stats, s => s.criticals, s => s.playerId), v => `5 台以上 ${v} 次`);
+  push('critical', '🌟', '大牌王', topHolders(stats, s => s.criticals, s => s.playerId), v => `${getCriticalTai()} 台以上 ${v} 次`);
   push('discard', '🎁', '放槍之王', topHolders(stats, s => s.discards, s => s.playerId), v => `放槍 ${v} 次`);
 
   const biggest = rounds

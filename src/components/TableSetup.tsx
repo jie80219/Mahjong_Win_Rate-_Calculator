@@ -5,6 +5,14 @@ import { loadLastTable } from '../utils/preferences';
 
 const WINDS = ['東', '南', '西', '北'];
 
+// 牌桌長度：打幾圈算一將，打完會提示結算
+const GAME_LENGTHS = [
+  { winds: 4, label: '一將（4 圈）' },
+  { winds: 2, label: '半將（2 圈）' },
+  { winds: 1, label: '一圈' },
+  { winds: 0, label: '不提示' },
+];
+
 interface StartTableArgs {
   playerIds: [string, string, string, string];
   seatOrder: [string, string, string, string];
@@ -12,6 +20,7 @@ interface StartTableArgs {
   baseMoney: number;
   taiMoney: number;
   dealerRule: DealerRule;
+  windsPerGame: number;
 }
 
 interface Props {
@@ -31,6 +40,7 @@ export default function TableSetup({ players, sessions, onStartTable, onResumeSe
   const [baseMoneyStr, setBaseMoneyStr] = useState('100');
   const [taiMoneyStr, setTaiMoneyStr] = useState('100');
   const [dealerRule, setDealerRule] = useState<DealerRule>('standard');
+  const [windsPerGame, setWindsPerGame] = useState(4);
   const activePlayers = useMemo(() => players.filter(p => p.isActive), [players]);
   const lastTable = useMemo(() => {
     const stored = loadLastTable();
@@ -87,8 +97,9 @@ export default function TableSetup({ players, sessions, onStartTable, onResumeSe
       baseMoney: Math.max(0, Number(baseMoneyStr) || 0),
       taiMoney: Math.max(0, Number(taiMoneyStr) || 0),
       dealerRule,
+      windsPerGame,
     });
-  }, [selected, seatOrder, baseMoneyStr, taiMoneyStr, dealerRule, onStartTable]);
+  }, [selected, seatOrder, baseMoneyStr, taiMoneyStr, dealerRule, windsPerGame, onStartTable]);
 
   if (step === 'seat') {
     return (
@@ -163,6 +174,26 @@ export default function TableSetup({ players, sessions, onStartTable, onResumeSe
             {dealerRule === 'standard'
               ? '莊家胡牌、放槍、自摸或被摸，都加計莊家台（1 + 2×連莊）'
               : '只有閒家自摸時，莊家多付莊家台（1 + 2×連莊）'}
+          </p>
+        </div>
+
+        <div className="money-settings">
+          <h3>牌桌長度</h3>
+          <div className="dealer-rule-options">
+            {GAME_LENGTHS.map(g => (
+              <button
+                key={g.winds}
+                className={`date-btn ${windsPerGame === g.winds ? 'active' : ''}`}
+                onClick={() => setWindsPerGame(g.winds)}
+              >
+                {g.label}
+              </button>
+            ))}
+          </div>
+          <p className="money-hint">
+            {windsPerGame === 0
+              ? '不會提示結算，想停就按「結束牌桌」'
+              : '打完會提示結算；同一組人繼續打就是下一將，結算時可以分將看'}
           </p>
         </div>
 

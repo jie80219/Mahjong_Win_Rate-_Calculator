@@ -31,6 +31,8 @@ export interface TableSession {
   initialDealerIndex?: number;
   dealerOverrides?: DealerOverride[];
   dealerRule?: DealerRule;
+  /** 牌桌長度：打幾圈算一將（4 = 一將、2 = 半將、1 = 一圈、0 = 不提示結算），沒設定是 4 */
+  windsPerGame?: number;
   baseMoney?: number;
   taiMoney?: number;
   startedAt: string;

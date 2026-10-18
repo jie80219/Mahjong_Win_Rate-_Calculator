@@ -1,6 +1,7 @@
 import type { Round, PlayerStats, ComputedStats, DateRange } from '../types';
 import { startOfDay, subDays, isWithinInterval, parseISO } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
+import { isCriticalTai } from './rules';
 
 const TZ = 'Asia/Taipei';
 
@@ -75,17 +76,17 @@ export function computePlayerStats(
       if (r.resultType === 'selfDraw') {
         if (r.winnerId === pid) {
           stats.selfDraws++;
-          if (r.tai !== null && r.tai >= 5) stats.criticals++;
+          if (isCriticalTai(r.tai)) stats.criticals++;
         } else {
           stats.beDrawn++;
         }
       } else if (r.resultType === 'discardWin') {
         if (r.winnerId === pid) {
           stats.ronWins++;
-          if (r.tai !== null && r.tai >= 5) stats.criticals++;
+          if (isCriticalTai(r.tai)) stats.criticals++;
         } else if (r.discarderId === pid) {
           stats.discards++;
-          if (r.tai !== null && r.tai >= 5) stats.beCriticals++;
+          if (isCriticalTai(r.tai)) stats.beCriticals++;
         }
       }
     }
@@ -216,17 +217,17 @@ export function computeCumulativeLine(
     if (r.resultType === 'selfDraw') {
       if (r.winnerId === playerId) {
         if (metric === 'selfDraw' || metric === 'win' || metric === 'overallWin') num++;
-        if (metric === 'critical' && r.tai !== null && r.tai >= 5) num++;
+        if (metric === 'critical' && isCriticalTai(r.tai)) num++;
       } else {
         if (metric === 'beDrawn') num++;
       }
     } else if (r.resultType === 'discardWin') {
       if (r.winnerId === playerId) {
         if (metric === 'win' || metric === 'overallWin') num++;
-        if (metric === 'critical' && r.tai !== null && r.tai >= 5) num++;
+        if (metric === 'critical' && isCriticalTai(r.tai)) num++;
       } else if (r.discarderId === playerId) {
         if (metric === 'discard') num++;
-        if (metric === 'beCritical' && r.tai !== null && r.tai >= 5) num++;
+        if (metric === 'beCritical' && isCriticalTai(r.tai)) num++;
       }
     }
 

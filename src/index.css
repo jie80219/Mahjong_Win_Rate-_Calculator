@@ -1471,6 +1471,41 @@ button:disabled {
   text-align: center;
 }
 .tai-item-unit { font-size: 12px; color: var(--text-secondary); }
+.tai-item.editing .tai-item-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tai-item.editing.is-hidden { opacity: 0.45; border-style: dashed; }
+.tai-item-action { font-size: 12px; padding: 0 2px; flex-shrink: 0; }
+.tai-item-action.danger { color: var(--danger); }
+
+/* 新增自訂牌型 */
+.tai-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.tai-add-name {
+  flex: 1 1 140px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 16px;
+}
+.tai-add-unit { display: flex; gap: 4px; }
+
+/* 設定面板 */
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.setting-row .custom-tai { margin: 0; }
 
 .tai-calc-footer {
   position: sticky;
@@ -1759,27 +1794,6 @@ button:disabled {
   .panel-overlay { align-items: center; }
 }
 
-/* ---------- 匯出的 HTML 報表 ---------- */
-.report-header { gap: 12px; flex-wrap: wrap; }
-.report-exported { font-size: 12px; color: var(--text-secondary); }
-.report-table-select {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.report-table-select label { font-size: 13px; font-weight: 700; color: var(--text-secondary); flex-shrink: 0; }
-.report-table-select select {
-  flex: 1;
-  min-width: 0;
-  padding: 8px 10px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 14px;
-}
-
 /* 牌局紀錄：每局的圈風、局、莊家 */
 .history-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; }
 .history-dealer { color: var(--primary); font-weight: 600; }
@@ -1793,3 +1807,4 @@ button:disabled {
   color: var(--text);
   font-size: 12px;
 }
+.settle-games { margin-bottom: 10px; }

@@ -18,6 +18,7 @@ const session: TableSession = {
   initialDealerIndex: 0,
   dealerOverrides: [{ afterSequence: 5, dealerIndex: 2, consecutive: 1, seatOrder: [P[1], P[0], P[2], P[3]], windCount: 1 }],
   dealerRule: 'standard',
+  windsPerGame: 2,
   baseMoney: 50,
   taiMoney: 20,
   startedAt: new Date(T0).toISOString(),

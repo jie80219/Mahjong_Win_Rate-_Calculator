@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Round, TableSession, DealerOverride, ResultType } from '../types';
-import { computeDealerTimeline, shiftWindCount, windLabel, roundDealerLabel } from './dealer';
+import { computeDealerTimeline, shiftWindCount, windLabel, roundDealerLabel, splitGames, gameName } from './dealer';
 
 const P: [string, string, string, string] = ['a', 'b', 'c', 'd'];
 
@@ -115,5 +115,48 @@ describe('手動調整莊家', () => {
   it('windLabel', () => {
     expect(windLabel(0, 2)).toBe('東風西');
     expect(windLabel(5, 3)).toBe('南風北');
+  });
+});
+
+describe('牌桌長度與分將', () => {
+  it('半將：打完東、南兩圈就提示結算', () => {
+    const s = { ...session(), windsPerGame: 2 };
+    expect(computeDealerTimeline(s, passDealer(7)).state!.jiangComplete).toBe(false);
+    const st = computeDealerTimeline(s, passDealer(8)).state!;
+    expect(st.jiangComplete).toBe(true);
+    expect(st.jiang).toBe(2);
+    expect(gameName(s, 1)).toBe('第1個半將');
+  });
+
+  it('一圈：東風打完就提示', () => {
+    const s = { ...session(), windsPerGame: 1 };
+    expect(computeDealerTimeline(s, passDealer(4)).state!.jiangComplete).toBe(true);
+    expect(gameName(s, 3)).toBe('第3圈');
+  });
+
+  it('不提示：打完一將也不提示，但分段仍以 4 圈為一將', () => {
+    const s = { ...session(), windsPerGame: 0 };
+    const st = computeDealerTimeline(s, passDealer(16)).state!;
+    expect(st.jiangComplete).toBe(false);
+    expect(st.jiang).toBe(2);
+  });
+
+  it('打完一將繼續打，牌局分成第 1 將、第 2 將', () => {
+    const rounds = passDealer(20);
+    const games = splitGames(session(), rounds);
+    expect(games.map(g => [g.label, g.rounds.length])).toEqual([['第1將', 16], ['第2將', 4]]);
+    expect(games[1].rounds[0].sequence).toBe(17);
+  });
+
+  it('連莊的局也算在同一將', () => {
+    const rounds = [...passDealer(15), round(16, 'draw', null), round(17, 'discardWin', 'a')];
+    const games = splitGames(session(), rounds);
+    expect(games.map(g => g.rounds.length)).toEqual([17]);
+  });
+
+  it('牌局紀錄的標示會帶第幾將', () => {
+    const { byRound } = computeDealerTimeline(session(), passDealer(18));
+    expect(roundDealerLabel(byRound.get('r17'), {})).toBe('第2將 東風東');
+    expect(roundDealerLabel(byRound.get('r17'), { windsPerGame: 2 })).toBe('第3個半將 東風東');
   });
 });

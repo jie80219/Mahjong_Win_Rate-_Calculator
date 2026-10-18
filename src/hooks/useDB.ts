@@ -51,6 +51,7 @@ export function useTableSessions() {
     baseMoney?: number,
     taiMoney?: number,
     dealerRule?: DealerRule,
+    windsPerGame?: number,
   ) => {
     const session: TableSession = {
       id: generateId(),
@@ -59,6 +60,7 @@ export function useTableSessions() {
       initialSeatOrder: seatOrder,
       initialDealerIndex,
       dealerRule,
+      windsPerGame,
       baseMoney,
       taiMoney,
       startedAt: nowISO(),
