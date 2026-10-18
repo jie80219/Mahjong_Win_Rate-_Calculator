@@ -34,6 +34,7 @@ export function computeRoundMoney(
   }
 
   const payment = base + round.tai * tai;
+  const multiplier = round.multiplier ?? 1;
   const dealerId = dealer?.dealerId ?? round.dealerId ?? null;
   const consecutive = dealer?.consecutive ?? round.dealerConsecutive ?? 0;
   const dealerExtra = dealerId ? (2 * consecutive + 1) * tai : 0;
@@ -44,6 +45,7 @@ export function computeRoundMoney(
     if (!round.discarderId) return result;
     let pay = payment;
     if (standard && (winnerIsDealer || round.discarderId === dealerId)) pay += dealerExtra;
+    pay *= multiplier;
     amounts[round.winnerId] = pay;
     amounts[round.discarderId] = -pay;
   }
@@ -53,6 +55,7 @@ export function computeRoundMoney(
       if (p === round.winnerId) continue;
       let pay = payment;
       if (winnerIsDealer ? standard : p === dealerId) pay += dealerExtra;
+      pay *= multiplier;
       amounts[p] = -pay;
       amounts[round.winnerId] += pay;
     }

@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react';
 import type { TableSession, ResultType, Round } from '../types';
 import { getPlayerName } from '../db/players';
 import { nowISO } from '../utils/id';
+import { leopardMultiplier } from '../utils/taiTable';
+import { loadSeatRotation, saveSeatRotation } from '../utils/preferences';
 import TaiCalculator from './TaiCalculator';
 
 interface Props {
@@ -15,7 +17,7 @@ interface Props {
 
 const TAI_BUTTONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 const WINDS = ['東', '南', '西', '北'];
-// 座位依逆時針排在桌子四邊：東在下、南在右、西在上、北在左
+// 座位依逆時針排在桌子四邊：預設東在下、南在右、西在上、北在左，可整桌旋轉讓記錄的人坐在下方
 const SEAT_POSITIONS = ['bottom', 'right', 'top', 'left'] as const;
 
 export default function RoundRecorder({ tableSession, onSave, initialData, editMode, onCancel, dealerId }: Props) {
@@ -28,8 +30,23 @@ export default function RoundRecorder({ tableSession, onSave, initialData, editM
   const [saving, setSaving] = useState(false);
   const [taiNote, setTaiNote] = useState(initialData?.taiNote ?? '');
   const [showCalc, setShowCalc] = useState(false);
+  const [multiplier, setMultiplier] = useState(initialData?.multiplier ?? 1);
+  const [rotation, setRotation] = useState(() => loadSeatRotation(tableSession.id));
 
   const seats = tableSession.seatOrder ?? tableSession.playerIds;
+  const bottomWind = WINDS[(4 - rotation) % 4];
+
+  const rotate = useCallback((step: number) => {
+    setRotation(prev => {
+      const next = (prev + step + 4) % 4;
+      saveSeatRotation(tableSession.id, next);
+      return next;
+    });
+  }, [tableSession.id]);
+
+  const toggleLeopard = useCallback(() => {
+    setMultiplier(m => (m > 1 ? 1 : leopardMultiplier()));
+  }, []);
 
   const reset = useCallback(() => {
     setResultType(null);
@@ -39,6 +56,7 @@ export default function RoundRecorder({ tableSession, onSave, initialData, editM
     setTaiNote('');
     setShowCustom(false);
     setCustomTai(10);
+    setMultiplier(1);
   }, []);
 
   const handleSeat = useCallback((pid: string) => {
@@ -88,9 +106,10 @@ export default function RoundRecorder({ tableSession, onSave, initialData, editM
     setTaiNote('');
   }, [customTai]);
 
-  const handleCalcApply = useCallback((t: number, note: string) => {
+  const handleCalcApply = useCallback((t: number, note: string, m: number) => {
     setTai(t);
     setTaiNote(note);
+    setMultiplier(m);
     if (t >= 10) {
       setCustomTai(t);
       setShowCustom(true);
@@ -126,14 +145,15 @@ export default function RoundRecorder({ tableSession, onSave, initialData, editM
     if (resultType === 'draw') return '流局';
     if (!winnerId) return '';
     const wName = getPlayerName(winnerId);
+    const extra = `${isCritical ? '，大牌' : ''}${multiplier > 1 ? `，豹子 ×${multiplier}` : ''}`;
     if (resultType === 'selfDraw') {
       if (tai === null) return `${wName}自摸`;
-      return `${wName}自摸，${tai} 台${isCritical ? '，大牌' : ''}`;
+      return `${wName}自摸，${tai} 台${extra}`;
     }
     if (!discarderId) return `${wName}胡牌`;
     const dName = getPlayerName(discarderId);
     if (tai === null) return `${wName}胡牌，${dName}放槍`;
-    return `${wName}胡牌，${dName}放槍，${tai} 台${isCritical ? '，大牌' : ''}`;
+    return `${wName}胡牌，${dName}放槍，${tai} 台${extra}`;
   })();
 
   const handleSave = useCallback(async () => {
@@ -148,6 +168,7 @@ export default function RoundRecorder({ tableSession, onSave, initialData, editM
         discarderId: resultType === 'discardWin' ? discarderId : null,
         tai: resultType === 'draw' ? null : tai,
         taiNote: resultType !== 'draw' && taiNote ? taiNote : undefined,
+        multiplier: resultType !== 'draw' && multiplier > 1 ? multiplier : undefined,
       });
       if (!editMode) reset();
     } catch {
@@ -155,7 +176,7 @@ export default function RoundRecorder({ tableSession, onSave, initialData, editM
     } finally {
       setSaving(false);
     }
-  }, [canSave, resultType, winnerId, discarderId, tai, taiNote, tableSession.id, onSave, reset, editMode, initialData]);
+  }, [canSave, resultType, winnerId, discarderId, tai, taiNote, multiplier, tableSession.id, onSave, reset, editMode, initialData]);
 
   return (
     <div className="round-recorder">
@@ -172,7 +193,7 @@ export default function RoundRecorder({ tableSession, onSave, initialData, editM
           return (
             <button
               key={pid}
-              className={`mj-seat mj-seat-${SEAT_POSITIONS[i]} ${pid === winnerId ? 'is-winner' : ''} ${pid === discarderId ? 'is-discarder' : ''}`}
+              className={`mj-seat mj-seat-${SEAT_POSITIONS[(i + rotation) % 4]} ${pid === winnerId ? 'is-winner' : ''} ${pid === discarderId ? 'is-discarder' : ''}`}
               onClick={() => handleSeat(pid)}
             >
               <span className="mj-seat-wind">{WINDS[i]}</span>
@@ -199,6 +220,12 @@ export default function RoundRecorder({ tableSession, onSave, initialData, editM
             流局
           </button>
         </div>
+      </div>
+
+      <div className="mj-rotate-bar">
+        <button className="btn-icon-sm" onClick={() => rotate(-1)} aria-label="桌位逆時針轉">⟲</button>
+        <span>轉動桌位・下方是{bottomWind}家</span>
+        <button className="btn-icon-sm" onClick={() => rotate(1)} aria-label="桌位順時針轉">⟳</button>
       </div>
 
       {hint && <p className="recorder-hint">{hint}</p>}
@@ -234,6 +261,13 @@ export default function RoundRecorder({ tableSession, onSave, initialData, editM
               <button className="tai-adjust" onClick={() => { const v = customTai + 1; setCustomTai(v); setTai(v); }}>+</button>
             </div>
           )}
+          <button
+            className={`leopard-toggle ${multiplier > 1 ? 'active' : ''}`}
+            onClick={toggleLeopard}
+            title="三顆骰子點數一樣：整筆金額（含底、莊家台）乘倍率"
+          >
+            🎲 骰規豹子 ×{multiplier > 1 ? multiplier : leopardMultiplier()}
+          </button>
         </div>
       )}
 
@@ -259,6 +293,7 @@ export default function RoundRecorder({ tableSession, onSave, initialData, editM
       {showCalc && (
         <TaiCalculator
           resultType={resultType}
+          leopard={multiplier > 1}
           onApply={handleCalcApply}
           onClose={() => setShowCalc(false)}
         />

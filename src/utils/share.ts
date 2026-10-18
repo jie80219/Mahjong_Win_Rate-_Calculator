@@ -11,8 +11,8 @@ interface SharePayload {
   v: 1;
   s: TableSession;
   n: Record<string, string>;
-  /** [id, sequence, playedAt(epoch 秒), 結果, 贏家 index, 放槍 index, 台數, 牌型?] */
-  r: [string, number, number, string, number, number, number, string?][];
+  /** [id, sequence, playedAt(epoch 秒), 結果, 贏家 index, 放槍 index, 台數, 牌型?, 倍率?] */
+  r: [string, number, number, string, number, number, number, string?, number?][];
 }
 
 export interface SharedTable {
@@ -55,7 +55,8 @@ export async function encodeShare(session: TableSession, rounds: Round[]): Promi
         idx(r.winnerId),
         idx(r.discarderId),
         r.tai ?? -1,
-        ...(r.taiNote ? [r.taiNote] : []),
+        // 有倍率時牌型欄位要佔位，倍率才會在第 9 格
+        ...((r.multiplier ?? 1) > 1 ? [r.taiNote ?? '', r.multiplier] : r.taiNote ? [r.taiNote] : []),
       ] as SharePayload['r'][number]),
   };
   const json = new TextEncoder().encode(JSON.stringify(payload));
@@ -67,7 +68,7 @@ export async function decodeShare(data: string): Promise<SharedTable> {
   const payload = JSON.parse(new TextDecoder().decode(bytes)) as SharePayload;
   if (payload.v !== 1 || !payload.s?.id || !Array.isArray(payload.r)) throw new Error('格式不符');
   const players = [...payload.s.playerIds];
-  const rounds: Round[] = payload.r.map(([id, sequence, ts, code, w, d, tai, taiNote]) => {
+  const rounds: Round[] = payload.r.map(([id, sequence, ts, code, w, d, tai, taiNote, multiplier]) => {
     const iso = new Date(ts * 1000).toISOString();
     return {
       id,
@@ -79,6 +80,7 @@ export async function decodeShare(data: string): Promise<SharedTable> {
       discarderId: d >= 0 ? players[d] : null,
       tai: tai >= 0 ? tai : null,
       ...(taiNote ? { taiNote } : {}),
+      ...(multiplier && multiplier > 1 ? { multiplier } : {}),
       createdAt: iso,
       updatedAt: iso,
     };

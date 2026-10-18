@@ -81,6 +81,7 @@ export default function HistoryPanel({ rounds, tableSession, sessions, filter, o
       discarderId: data.discarderId,
       tai: data.tai,
       taiNote: data.taiNote,
+      multiplier: data.multiplier,
     });
     setEditingId(null);
   };
@@ -126,6 +127,7 @@ export default function HistoryPanel({ rounds, tableSession, sessions, filter, o
                     <span className="history-seq">#{r.sequence}</span>
                     <span className="history-summary">{roundSummary(r)}</span>
                     {r.tai !== null && r.tai >= 5 && <span className="critical-badge">大牌</span>}
+                    {(r.multiplier ?? 1) > 1 && <span className="leopard-badge">豹子 ×{r.multiplier}</span>}
                   </div>
                   {r.taiNote && <div className="history-tai-note">{r.taiNote}</div>}
                   <div className="history-meta">

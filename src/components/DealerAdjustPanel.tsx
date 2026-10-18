@@ -1,13 +1,14 @@
 import { useState, useCallback, useRef } from 'react';
 import type { TableSession, DealerState } from '../types';
 import { getPlayerName } from '../db/players';
+import { shiftRotations, rotationsLabel } from '../utils/dealer';
 
 const WINDS = ['東', '南', '西', '北'] as const;
 
 interface Props {
   session: TableSession;
   dealerState: DealerState;
-  onApply: (seatOrder: [string, string, string, string], dealerIndex: number, consecutive: number) => void;
+  onApply: (seatOrder: [string, string, string, string], dealerIndex: number, consecutive: number, rotations: number) => void;
 }
 
 export default function DealerAdjustPanel({ session, dealerState, onApply }: Props) {
@@ -18,6 +19,14 @@ export default function DealerAdjustPanel({ session, dealerState, onApply }: Pro
   const [order, setOrder] = useState<string[]>([...seatOrder]);
   const [selectedIdx, setSelectedIdx] = useState(currentIdx);
   const [consecutive, setConsecutive] = useState(dealerState.consecutive);
+  /** 手動指定的圈風位置；沒指定時依換莊方向自動推算 */
+  const [manualRotations, setManualRotations] = useState<number | null>(null);
+
+  const prevIdx = order.indexOf(dealerState.dealerId);
+  const rotations = manualRotations ?? shiftRotations(dealerState.rotations, prevIdx, selectedIdx);
+  const jiangBase = Math.floor(rotations / 16) * 16;
+  const windIdx = Math.floor((rotations % 16) / 4);
+  const roundIdx = rotations % 4;
 
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
@@ -29,6 +38,7 @@ export default function DealerAdjustPanel({ session, dealerState, onApply }: Pro
     setOrder(so);
     setSelectedIdx(so.indexOf(dealerState.dealerId));
     setConsecutive(dealerState.consecutive);
+    setManualRotations(null);
     setOpen(true);
   }, [seatOrder, dealerState]);
 
@@ -88,9 +98,9 @@ export default function DealerAdjustPanel({ session, dealerState, onApply }: Pro
   }, [swapItems]);
 
   const handleApply = useCallback(() => {
-    onApply(order as [string, string, string, string], selectedIdx, consecutive);
+    onApply(order as [string, string, string, string], selectedIdx, consecutive, rotations);
     setOpen(false);
-  }, [order, selectedIdx, consecutive, onApply]);
+  }, [order, selectedIdx, consecutive, rotations, onApply]);
 
   if (!open) {
     return (
@@ -134,9 +144,35 @@ export default function DealerAdjustPanel({ session, dealerState, onApply }: Pro
           <button
             key={pid}
             className={`dealer-adjust-btn ${selectedIdx === i ? 'active' : ''}`}
-            onClick={() => setSelectedIdx(i)}
+            onClick={() => { setSelectedIdx(i); setManualRotations(null); }}
           >
             {getPlayerName(pid)}
+          </button>
+        ))}
+      </div>
+
+      <label className="dealer-adjust-label">
+        圈風（目前 {rotationsLabel(dealerState.rotations)} → 套用後 {rotationsLabel(rotations)}）
+      </label>
+      <div className="dealer-adjust-players">
+        {WINDS.map((w, i) => (
+          <button
+            key={w}
+            className={`dealer-adjust-btn ${windIdx === i ? 'active' : ''}`}
+            onClick={() => setManualRotations(jiangBase + i * 4 + roundIdx)}
+          >
+            {w}風
+          </button>
+        ))}
+      </div>
+      <div className="dealer-adjust-players">
+        {WINDS.map((w, i) => (
+          <button
+            key={w}
+            className={`dealer-adjust-btn ${roundIdx === i ? 'active' : ''}`}
+            onClick={() => setManualRotations(jiangBase + windIdx * 4 + i)}
+          >
+            {w}局
           </button>
         ))}
       </div>

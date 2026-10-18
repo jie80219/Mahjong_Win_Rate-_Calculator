@@ -13,6 +13,8 @@ export interface TaiItem {
   covers?: string[];
   /** 被包含時改成哪一項（例如門清自摸被嚦咕包含時，保留自摸） */
   coverReplace?: Record<string, string>;
+  /** 不加台數，而是整筆金額乘上倍率（tai 欄位當作倍數） */
+  multiplier?: boolean;
 }
 
 export interface TaiGroup {
@@ -90,7 +92,8 @@ export const TAI_GROUPS: TaiGroup[] = [
     title: '骰規',
     items: [
       { key: 'diceRed', name: '骰規全紅', tai: 1, desc: '三顆骰子都是紅點（1 或 4）', excludes: ['diceStraight'] },
-      { key: 'diceStraight', name: '骰規順子', tai: 2, desc: '三顆骰子點數連號，例如 2-3-4', excludes: ['diceRed'] },
+      { key: 'diceStraight', name: '骰規順子', tai: 2, desc: '三顆骰子點數連號，例如 2-3-4', excludes: ['diceRed', 'leopard'] },
+      { key: 'leopard', name: '骰規豹子', tai: 3, desc: '三顆骰子點數一樣，整筆金額（含底、莊家台）乘倍率；1-1-1、4-4-4 可再加全紅', excludes: ['diceStraight'], multiplier: true },
     ],
   },
 ];
@@ -117,6 +120,22 @@ export function saveTaiOverrides(overrides: Record<string, number>): void {
 
 export function taiOf(item: TaiItem, overrides: Record<string, number>): number {
   return overrides[item.key] ?? item.tai;
+}
+
+const LEOPARD_ITEM = ALL_TAI_ITEMS.find(i => i.key === 'leopard')!;
+
+/** 豹子目前設定的倍率（預設 3 倍，可在計算表的自訂台數修改） */
+export function leopardMultiplier(overrides: Record<string, number> = loadTaiOverrides()): number {
+  return Math.max(1, taiOf(LEOPARD_ITEM, overrides));
+}
+
+/** 計算表選到的倍率項目（豹子），沒選就是 1 */
+export function multiplierOf(counts: Record<string, number>, overrides: Record<string, number>): number {
+  let m = 1;
+  for (const item of ALL_TAI_ITEMS) {
+    if (item.multiplier && (counts[item.key] ?? 0) > 0) m *= Math.max(1, taiOf(item, overrides));
+  }
+  return m;
 }
 
 function select(counts: Record<string, number>, item: TaiItem, count: number): void {
@@ -154,13 +173,15 @@ export function toggleTaiItem(prev: Record<string, number>, key: string): Record
 /** counts：每一項選了幾次 */
 export function sumTai(counts: Record<string, number>, overrides: Record<string, number>, extra = 0): number {
   let total = extra;
-  for (const item of ALL_TAI_ITEMS) total += (counts[item.key] ?? 0) * taiOf(item, overrides);
+  for (const item of ALL_TAI_ITEMS) {
+    if (!item.multiplier) total += (counts[item.key] ?? 0) * taiOf(item, overrides);
+  }
   return Math.max(0, total);
 }
 
 export function describeTai(counts: Record<string, number>): string {
   return ALL_TAI_ITEMS
-    .filter(i => (counts[i.key] ?? 0) > 0)
+    .filter(i => !i.multiplier && (counts[i.key] ?? 0) > 0)
     .map(i => (counts[i.key] > 1 ? `${i.name}×${counts[i.key]}` : i.name))
     .join('、');
 }

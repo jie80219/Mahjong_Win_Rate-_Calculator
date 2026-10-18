@@ -14,6 +14,20 @@ export interface DealerTimeline {
   state: DealerState | null;
 }
 
+/**
+ * 手動換莊時推算圈數：往下家移是往前輪，往上家移（改回上一個莊）是往回退。
+ * 以前一律當成往前輪，往回改一個莊會多跳 3 局，看起來就像多跳了一個圈風。
+ */
+export function shiftRotations(rotations: number, prevDealerIdx: number, newDealerIdx: number): number {
+  const forward = (newDealerIdx - prevDealerIdx + 4) % 4;
+  const delta = forward === 3 ? -1 : forward;
+  return Math.max(0, rotations + delta);
+}
+
+export function rotationsLabel(rotations: number): string {
+  return `${WINDS[Math.floor(rotations / 4) % 4]}風${WINDS[rotations % 4]}`;
+}
+
 export function computeDealerTimeline(
   session: TableSession,
   rounds: Round[],
@@ -44,7 +58,7 @@ export function computeDealerTimeline(
       const prevDealer = seat[dealerIdx];
       if (o.seatOrder) seat = o.seatOrder;
       const prevIdxInNewSeat = Math.max(0, seat.indexOf(prevDealer));
-      rotations += (o.dealerIndex - prevIdxInNewSeat + 4) % 4;
+      rotations = o.rotations ?? shiftRotations(rotations, prevIdxInNewSeat, o.dealerIndex);
       dealerIdx = o.dealerIndex;
       consecutive = o.consecutive;
     }
@@ -75,6 +89,7 @@ export function computeDealerTimeline(
       consecutive,
       wind: WINDS[Math.floor(rotations / 4) % 4],
       windRound: (rotations % 4) + 1,
+      rotations,
       jiang: Math.floor(rotations / 16) + 1,
       jiangComplete: rotations > 0 && rotations % 16 === 0 && consecutive === 0,
     },

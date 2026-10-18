@@ -121,11 +121,12 @@ export default function App() {
     newSeatOrder: [string, string, string, string],
     dealerIndex: number,
     consecutive: number,
+    rotations: number,
   ) => {
     if (!activeSession) return;
     const currentSeq = rounds.reduce((max, r) => Math.max(max, r.sequence), 0);
     const overrides = [...(activeSession.dealerOverrides ?? [])];
-    const override = { afterSequence: currentSeq, dealerIndex, consecutive, seatOrder: newSeatOrder };
+    const override = { afterSequence: currentSeq, dealerIndex, consecutive, seatOrder: newSeatOrder, rotations };
     const existingIdx = overrides.findIndex(o => o.afterSequence === currentSeq);
     if (existingIdx >= 0) {
       overrides[existingIdx] = override;

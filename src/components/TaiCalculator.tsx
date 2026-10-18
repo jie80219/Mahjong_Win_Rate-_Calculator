@@ -2,23 +2,29 @@ import { useState } from 'react';
 import type { ResultType } from '../types';
 import {
   TAI_GROUPS, ALL_TAI_ITEMS, loadTaiOverrides, saveTaiOverrides, taiOf, sumTai, describeTai, toggleTaiItem, coveredBy,
+  multiplierOf,
 } from '../utils/taiTable';
 
 interface Props {
   resultType?: ResultType | null;
-  onApply?: (tai: number, note: string) => void;
+  /** 記錄頁目前是否已勾豹子，打開計算表時帶入 */
+  leopard?: boolean;
+  onApply?: (tai: number, note: string, multiplier: number) => void;
   onClose: () => void;
 }
 
-export default function TaiCalculator({ resultType, onApply, onClose }: Props) {
-  const [counts, setCounts] = useState<Record<string, number>>(() =>
-    (resultType === 'selfDraw' ? { zimo: 1 } : {}) as Record<string, number>);
+export default function TaiCalculator({ resultType, leopard, onApply, onClose }: Props) {
+  const [counts, setCounts] = useState<Record<string, number>>(() => ({
+    ...(resultType === 'selfDraw' ? { zimo: 1 } : {}),
+    ...(leopard ? { leopard: 1 } : {}),
+  }) as Record<string, number>);
   const [extra, setExtra] = useState(0);
   const [overrides, setOverrides] = useState<Record<string, number>>(loadTaiOverrides);
   const [editing, setEditing] = useState(false);
 
   const total = sumTai(counts, overrides, extra);
   const note = describeTai(counts);
+  const multiplier = multiplierOf(counts, overrides);
 
   const toggle = (key: string) => setCounts(prev => toggleTaiItem(prev, key));
 
@@ -73,7 +79,7 @@ export default function TaiCalculator({ resultType, onApply, onClose }: Props) {
                         value={String(value)}
                         onChange={e => setOverride(item.key, e.target.value)}
                       />
-                      <span className="tai-item-unit">台</span>
+                      <span className="tai-item-unit">{item.multiplier ? '倍' : '台'}</span>
                     </label>
                   );
                 }
@@ -91,7 +97,9 @@ export default function TaiCalculator({ resultType, onApply, onClose }: Props) {
                       {count > 1 && <span className="tai-item-count">×{count}</span>}
                     </span>
                     <span className="tai-item-tai">
-                      {cover ? `已含在${cover.name}` : `${value} 台${item.max ? '／個' : ''}`}
+                      {cover
+                        ? `已含在${cover.name}`
+                        : item.multiplier ? `金額 ×${value}` : `${value} 台${item.max ? '／個' : ''}`}
                     </span>
                     <span className="tai-item-desc">{item.desc}</span>
                   </button>
@@ -114,14 +122,17 @@ export default function TaiCalculator({ resultType, onApply, onClose }: Props) {
 
         <div className="tai-calc-footer">
           <div className="tai-calc-total">
-            <div><span className="tai-calc-number">{total}</span> 台</div>
+            <div>
+              <span className="tai-calc-number">{total}</span> 台
+              {multiplier > 1 && <span className="leopard-badge">豹子 ×{multiplier}</span>}
+            </div>
             {note && <span className="tai-calc-note">{note}</span>}
           </div>
           <div className="tai-calc-actions">
             <button className="btn-secondary btn-sm" onClick={() => { setCounts({}); setExtra(0); }}>清除</button>
             {onApply && (
-              <button className="btn-primary btn-sm" onClick={() => onApply(total, note)}>
-                套用 {total} 台
+              <button className="btn-primary btn-sm" onClick={() => onApply(total, note, multiplier)}>
+                套用 {total} 台{multiplier > 1 ? ` ×${multiplier}` : ''}
               </button>
             )}
           </div>

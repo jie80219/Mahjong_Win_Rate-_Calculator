@@ -11,6 +11,8 @@ export interface DealerOverride {
   dealerIndex: number;
   consecutive: number;
   seatOrder?: [string, string, string, string];
+  /** 調整後所在的圈（0 = 東風東，每換一次莊 +1）；舊資料沒有時依莊家位置推算 */
+  rotations?: number;
 }
 
 /**
@@ -44,6 +46,8 @@ export interface Round {
   tai: number | null;
   /** 用台數計算表算出的牌型，例如「門清自摸、混一色」 */
   taiNote?: string;
+  /** 骰規豹子等倍率：整筆金額（含底、莊家台）乘上這個數，沒有就是 1 */
+  multiplier?: number;
   dealerId?: string | null;
   dealerConsecutive?: number;
   createdAt: string;
@@ -57,6 +61,8 @@ export interface DealerState {
   consecutive: number;
   wind: WindName;
   windRound: number;
+  /** 從東風東開始換過幾次莊（含調整），用來推算圈風與將數 */
+  rotations: number;
   /** 第幾將（四圈打完算一將） */
   jiang: number;
   /** 剛好打完一將（北風北結束） */
