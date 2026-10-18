@@ -206,14 +206,20 @@ export default function App() {
     await refreshSessions();
   }, [activeSession, refreshSessions]);
 
+  // 打開一張既有牌桌：玩家篩選換成這桌的人，避免殘留上一桌的玩家
+  const openSession = useCallback((s: TableSession) => {
+    setActiveSession(s);
+    updatePrefs({ selectedPlayerIds: [...s.playerIds] });
+  }, [updatePrefs]);
+
   const handleShareDone = useCallback(async (sessionId: string | null) => {
     history.replaceState(null, '', location.pathname + location.search);
     setShareData(null);
     if (!sessionId) return;
     await refreshAll();
     const s = await db.tableSessions.get(sessionId);
-    if (s) setActiveSession(s);
-  }, [refreshAll]);
+    if (s) openSession(s);
+  }, [refreshAll, openSession]);
 
   const scope = prefs.scope;
   const { filteredRounds, stats, tableDraw, roundsMoney, cumulativeMoney } = useDashboardData({
@@ -271,7 +277,7 @@ export default function App() {
           players={players}
           sessions={sessions}
           onStartTable={handleStartTable}
-          onResumeSession={(s) => { setActiveSession(s); }}
+          onResumeSession={openSession}
           onManagePlayers={() => setShowPlayers(true)}
         />
       )}

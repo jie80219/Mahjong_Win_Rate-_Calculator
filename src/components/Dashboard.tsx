@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import type { ComputedStats, Preferences, MetricKey, Round, TableSession } from '../types';
 import type { RoundMoney } from '../utils/money';
 import { getAllPlayers, getPlayerName } from '../db/players';
+import { visiblePlayerIds } from '../utils/stats';
 import BarChartView from './views/BarChartView';
 import MoneyBarChart from './views/MoneyBarChart';
 import LineChartView from './views/LineChartView';
@@ -81,20 +82,21 @@ export default function Dashboard({
     }
   }, [activeSession, onUpdatePrefs]);
 
+  const chartPlayerIds = visiblePlayerIds(scope, prefs.selectedPlayerIds, activeSession.playerIds);
+
   const togglePlayerFilter = useCallback((pid: string) => {
-    const current = prefs.selectedPlayerIds;
+    const current = chartPlayerIds;
     if (current.includes(pid)) {
       if (current.length <= 1) return;
       onUpdatePrefs({ selectedPlayerIds: current.filter(id => id !== pid) });
     } else {
       onUpdatePrefs({ selectedPlayerIds: [...current, pid] });
     }
-  }, [prefs.selectedPlayerIds, onUpdatePrefs]);
+  }, [chartPlayerIds, onUpdatePrefs]);
 
   const availablePlayers = scope === 'all'
     ? getAllPlayers().filter(p => p.isActive || prefs.selectedPlayerIds.includes(p.id))
     : getAllPlayers().filter(p => activeSession.playerIds.includes(p.id));
-  const chartPlayerIds = prefs.selectedPlayerIds.length > 0 ? prefs.selectedPlayerIds : [...activeSession.playerIds];
 
   const dateLabel = (() => {
     switch (prefs.dateRange.type) {
@@ -139,7 +141,7 @@ export default function Dashboard({
         {availablePlayers.map(p => (
           <button
             key={p.id}
-            className={`filter-btn ${prefs.selectedPlayerIds.includes(p.id) ? 'active' : ''}`}
+            className={`filter-btn ${chartPlayerIds.includes(p.id) ? 'active' : ''}`}
             onClick={() => togglePlayerFilter(p.id)}
           >
             {p.displayName}

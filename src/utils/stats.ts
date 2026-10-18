@@ -242,3 +242,15 @@ export function computeCumulativeLine(
 
   return points;
 }
+
+/**
+ * 圖表與趣味統計要顯示哪些玩家。
+ * 目前牌桌：只看本桌的人（篩選裡殘留別桌的人不算）；都沒選就是全桌。全部紀錄：照篩選。
+ */
+export function visiblePlayerIds(scope: 'table' | 'all', selected: string[], tableIds: readonly string[]): string[] {
+  if (scope === 'table') {
+    const picked = tableIds.filter(id => selected.includes(id));
+    return picked.length > 0 ? picked : [...tableIds];
+  }
+  return selected.length > 0 ? selected : [...tableIds];
+}
