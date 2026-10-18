@@ -15,17 +15,20 @@ export interface DealerTimeline {
 }
 
 /**
- * 手動換莊時推算圈數：往下家移是往前輪，往上家移（改回上一個莊）是往回退。
- * 以前一律當成往前輪，往回改一個莊會多跳 3 局，看起來就像多跳了一個圈風。
+ * 「局」就是莊家坐的位置（西家當莊就是西局），所以只需要另外記圈風。
+ * 圈風只在莊家從北家輪回東家時前進；手動換莊時依方向判斷有沒有跨過北→東：
+ * 往下家（或隔一家）移且跨過北→東就進一圈，往上家移且跨回去就退一圈，其他情況圈風不變。
  */
-export function shiftRotations(rotations: number, prevDealerIdx: number, newDealerIdx: number): number {
+export function shiftWindCount(windCount: number, prevDealerIdx: number, newDealerIdx: number): number {
   const forward = (newDealerIdx - prevDealerIdx + 4) % 4;
-  const delta = forward === 3 ? -1 : forward;
-  return Math.max(0, rotations + delta);
+  if (forward === 0) return windCount;
+  if (forward === 3) return newDealerIdx > prevDealerIdx ? Math.max(0, windCount - 1) : windCount;
+  return newDealerIdx < prevDealerIdx ? windCount + 1 : windCount;
 }
 
-export function rotationsLabel(rotations: number): string {
-  return `${WINDS[Math.floor(rotations / 4) % 4]}風${WINDS[rotations % 4]}`;
+/** 例如「南風西」：圈風看 windCount，局看莊家座位 */
+export function windLabel(windCount: number, dealerIdx: number): string {
+  return `${WINDS[windCount % 4]}風${WINDS[dealerIdx]}`;
 }
 
 export function computeDealerTimeline(
@@ -49,7 +52,10 @@ export function computeDealerTimeline(
   let seat = session.initialSeatOrder ?? currentSeat;
   let dealerIdx = session.initialDealerIndex;
   let consecutive = 0;
-  let rotations = 0;
+  /** 第幾個圈風（0 = 東風，4 = 第二將的東風） */
+  let windCount = 0;
+  /** 是否剛從北家輪回東家（用來判斷一將打完） */
+  let wrapped = false;
   let overridePos = 0;
 
   const applyOverridesUpTo = (limit: number) => {
@@ -58,9 +64,13 @@ export function computeDealerTimeline(
       const prevDealer = seat[dealerIdx];
       if (o.seatOrder) seat = o.seatOrder;
       const prevIdxInNewSeat = Math.max(0, seat.indexOf(prevDealer));
-      rotations = o.rotations ?? shiftRotations(rotations, prevIdxInNewSeat, o.dealerIndex);
+      if (o.windCount !== undefined) windCount = o.windCount;
+      // 前一版存的是「換過幾次莊」，圈風是它除以 4
+      else if (o.rotations !== undefined) windCount = Math.floor(o.rotations / 4);
+      else windCount = shiftWindCount(windCount, prevIdxInNewSeat, o.dealerIndex);
       dealerIdx = o.dealerIndex;
       consecutive = o.consecutive;
+      wrapped = false;
     }
   };
 
@@ -73,10 +83,12 @@ export function computeDealerTimeline(
     const dealerStays = r.resultType === 'draw' || r.winnerId === dealerId;
     if (dealerStays) {
       consecutive++;
+      wrapped = false;
     } else {
       consecutive = 0;
       dealerIdx = (dealerIdx + 1) % 4;
-      rotations++;
+      wrapped = dealerIdx === 0;
+      if (wrapped) windCount++;
     }
   }
 
@@ -87,11 +99,11 @@ export function computeDealerTimeline(
     state: {
       dealerId: seat[dealerIdx],
       consecutive,
-      wind: WINDS[Math.floor(rotations / 4) % 4],
-      windRound: (rotations % 4) + 1,
-      rotations,
-      jiang: Math.floor(rotations / 16) + 1,
-      jiangComplete: rotations > 0 && rotations % 16 === 0 && consecutive === 0,
+      wind: WINDS[windCount % 4],
+      windRound: dealerIdx + 1,
+      windCount,
+      jiang: Math.floor(windCount / 4) + 1,
+      jiangComplete: wrapped && windCount > 0 && windCount % 4 === 0,
     },
   };
 }

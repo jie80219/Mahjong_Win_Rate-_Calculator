@@ -11,7 +11,9 @@ export interface DealerOverride {
   dealerIndex: number;
   consecutive: number;
   seatOrder?: [string, string, string, string];
-  /** 調整後所在的圈（0 = 東風東，每換一次莊 +1）；舊資料沒有時依莊家位置推算 */
+  /** 調整後的圈風（0 = 東風，4 = 第二將東風）；局由莊家座位決定 */
+  windCount?: number;
+  /** 前一版的欄位（換過幾次莊），只用來讀舊資料 */
   rotations?: number;
 }
 
@@ -61,8 +63,8 @@ export interface DealerState {
   consecutive: number;
   wind: WindName;
   windRound: number;
-  /** 從東風東開始換過幾次莊（含調整），用來推算圈風與將數 */
-  rotations: number;
+  /** 第幾個圈風（0 = 東風，4 = 第二將東風），局則是莊家座位 */
+  windCount: number;
   /** 第幾將（四圈打完算一將） */
   jiang: number;
   /** 剛好打完一將（北風北結束） */
