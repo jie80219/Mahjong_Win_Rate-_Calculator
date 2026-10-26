@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Round, TableSession, DealerRule } from '../types';
-import { computeRoundMoney, computeSettlement, computeCumulativeMoney, computeAllRoundsMoney } from './money';
+import { computeRoundMoney, computeSettlement, computeCumulativeMoney, computeAllRoundsMoney, withDealerTai } from './money';
 
 const P: [string, string, string, string] = ['a', 'b', 'c', 'd'];
 
@@ -87,5 +87,29 @@ describe('總額與結算', () => {
     }
     expect(Object.values(after).every(v => v === 0)).toBe(true);
     expect(transfers.length).toBeLessThanOrEqual(3);
+  });
+});
+
+describe('含莊家台的總台數', () => {
+  // 座位 a b c d、a 起莊：#1 a 自摸（連0）、#2 a 胡 b（連1）、#3 b 自摸 1 台（a 連2，莊家另付不算進總台數）、#4 c 胡 b（b 當莊連0）
+  const rounds = [
+    round({ id: '1', sequence: 1, resultType: 'selfDraw', winnerId: 'a', tai: 2 }),
+    round({ id: '2', sequence: 2, winnerId: 'a', discarderId: 'b', tai: 1 }),
+    round({ id: '3', sequence: 3, resultType: 'selfDraw', winnerId: 'b', tai: 1 }),
+    round({ id: '4', sequence: 4, winnerId: 'c', discarderId: 'b', tai: 2 }),
+  ];
+  const taiOf = (rule: DealerRule) => withDealerTai(rounds, [session(rule)]).map(r => r.tai);
+
+  it('標準：莊家胡牌、莊家放槍都加莊家台；閒家自摸不加', () => {
+    expect(taiOf('standard')).toEqual([3, 4, 1, 3]);
+  });
+
+  it('僅閒家自摸規則：總台數不變', () => {
+    expect(taiOf('legacy')).toEqual([2, 1, 1, 2]);
+  });
+
+  it('不改原始牌局，算錢照舊', () => {
+    withDealerTai(rounds, [session()]);
+    expect(rounds.map(r => r.tai)).toEqual([2, 1, 1, 2]);
   });
 });

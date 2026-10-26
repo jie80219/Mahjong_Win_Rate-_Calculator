@@ -4,6 +4,7 @@ import { getPlayerName } from '../db/players';
 import RoundRecorder from './RoundRecorder';
 import { computeDealerTimeline, roundDealerLabel, type RoundDealer } from '../utils/dealer';
 import { isCriticalTai } from '../utils/rules';
+import { computeRoundDealerTai, type RoundDealerTai } from '../utils/money';
 
 interface Props {
   rounds: Round[];
@@ -17,18 +18,32 @@ interface Props {
   tablePlayerMap: Map<string, string[]>;
 }
 
-function roundSummary(r: Round): string {
-  if (r.resultType === 'draw') return '流局';
-  const winner = r.winnerId ? getPlayerName(r.winnerId) : '?';
-  const isCritical = isCriticalTai(r.tai);
-  if (r.resultType === 'selfDraw') {
-    return `${winner}自摸 ${r.tai} 台${isCritical ? ' 大牌' : ''}`;
-  }
-  const discarder = r.discarderId ? getPlayerName(r.discarderId) : '?';
-  return `${winner}胡牌，${discarder}放槍 ${r.tai} 台${isCritical ? ' 大牌' : ''}`;
+const NO_DEALER_TAI: RoundDealerTai = { inHand: 0, dealerOnly: 0 };
+
+/** 含莊家台的總台數（閒家自摸時莊家另付的不算） */
+function totalTai(r: Round, d: RoundDealerTai): number | null {
+  return r.tai === null ? null : r.tai + d.inHand;
 }
 
-function matchesFilter(r: Round, filter: { playerId?: string; metric?: string } | null): boolean {
+/** 例如「（含莊家 7 台）」「（莊家另付 9 台）」 */
+function dealerTaiText(d: RoundDealerTai): string {
+  if (d.inHand) return `（含莊家 ${d.inHand} 台）`;
+  if (d.dealerOnly) return `（莊家另付 ${d.dealerOnly} 台）`;
+  return '';
+}
+
+function roundSummary(r: Round, d: RoundDealerTai): string {
+  if (r.resultType === 'draw') return '流局';
+  const winner = r.winnerId ? getPlayerName(r.winnerId) : '?';
+  const tai = `${totalTai(r, d)} 台${dealerTaiText(d)}`;
+  if (r.resultType === 'selfDraw') {
+    return `${winner}自摸 ${tai}`;
+  }
+  const discarder = r.discarderId ? getPlayerName(r.discarderId) : '?';
+  return `${winner}胡牌，${discarder}放槍 ${tai}`;
+}
+
+function matchesFilter(r: Round, d: RoundDealerTai, filter: { playerId?: string; metric?: string } | null): boolean {
   if (!filter) return true;
   const { playerId, metric } = filter;
   if (!playerId) return true;
@@ -45,9 +60,9 @@ function matchesFilter(r: Round, filter: { playerId?: string; metric?: string } 
     case 'beDrawn':
       return r.resultType === 'selfDraw' && r.winnerId !== playerId;
     case 'critical':
-      return r.winnerId === playerId && isCriticalTai(r.tai);
+      return r.winnerId === playerId && isCriticalTai(totalTai(r, d));
     case 'beCritical':
-      return r.resultType === 'discardWin' && r.discarderId === playerId && isCriticalTai(r.tai);
+      return r.resultType === 'discardWin' && r.discarderId === playerId && isCriticalTai(totalTai(r, d));
     default:
       return r.winnerId === playerId || r.discarderId === playerId;
   }
@@ -58,25 +73,30 @@ export default function HistoryPanel({ rounds, tableSession, sessions, filter, o
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteInput, setDeleteInput] = useState('');
 
-  const filtered = useMemo(() => {
-    let list = [...rounds];
-    if (filter) {
-      list = list.filter(r => matchesFilter(r, filter));
-    }
-    return list.sort((a, b) => b.playedAt.localeCompare(a.playedAt));
-  }, [rounds, filter]);
-
-  // 每局開打時的圈風、局、莊家、連莊（依各牌桌全部牌局推算）
-  const dealerByRound = useMemo(() => {
-    const map = new Map<string, RoundDealer>();
+  // 每局開打時的圈風、局、莊家、連莊（依各牌桌全部牌局推算），以及這局的莊家台
+  const { dealerByRound, dealerTaiByRound } = useMemo(() => {
+    const dealers = new Map<string, RoundDealer>();
+    const dealerTai = new Map<string, RoundDealerTai>();
     const sessionIds = new Set(rounds.map(r => r.tableSessionId));
     for (const id of sessionIds) {
       const s = sessions.find(x => x.id === id) ?? (tableSession.id === id ? tableSession : null);
       if (!s) continue;
-      for (const [rid, d] of computeDealerTimeline(s, rounds).byRound) map.set(rid, d);
+      for (const [rid, d] of computeDealerTimeline(s, rounds).byRound) dealers.set(rid, d);
+      for (const r of rounds) {
+        if (r.tableSessionId === id) dealerTai.set(r.id, computeRoundDealerTai(r, s, dealers.get(r.id)));
+      }
     }
-    return map;
+    return { dealerByRound: dealers, dealerTaiByRound: dealerTai };
   }, [rounds, sessions, tableSession]);
+  const dealerTaiOf = (r: Round) => dealerTaiByRound.get(r.id) ?? NO_DEALER_TAI;
+
+  const filtered = useMemo(() => {
+    let list = [...rounds];
+    if (filter) {
+      list = list.filter(r => matchesFilter(r, dealerTaiByRound.get(r.id) ?? NO_DEALER_TAI, filter));
+    }
+    return list.sort((a, b) => b.playedAt.localeCompare(a.playedAt));
+  }, [rounds, filter, dealerTaiByRound]);
 
   const editingRound = editingId ? rounds.find(r => r.id === editingId) : null;
   const editSession = editingRound
@@ -138,8 +158,8 @@ export default function HistoryPanel({ rounds, tableSession, sessions, filter, o
                 <div key={r.id} className="history-item">
                   <div className="history-main">
                     <span className="history-seq">#{r.sequence}</span>
-                    <span className="history-summary">{roundSummary(r)}</span>
-                    {isCriticalTai(r.tai) && <span className="critical-badge">大牌</span>}
+                    <span className="history-summary">{roundSummary(r, dealerTaiOf(r))}</span>
+                    {isCriticalTai(totalTai(r, dealerTaiOf(r))) && <span className="critical-badge">大牌</span>}
                     {(r.multiplier ?? 1) > 1 && <span className="leopard-badge">金額 ×{r.multiplier}</span>}
                   </div>
                   {r.taiNote && <div className="history-tai-note">{r.taiNote}</div>}

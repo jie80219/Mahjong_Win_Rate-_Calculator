@@ -223,7 +223,7 @@ export default function App() {
   }, [refreshAll, openSession]);
 
   const scope = prefs.scope;
-  const { filteredRounds, stats, tableDraw, roundsMoney, cumulativeMoney } = useDashboardData({
+  const { taiRounds, stats, tableDraw, roundsMoney, cumulativeMoney } = useDashboardData({
     activeSession, rounds, allRounds, sessions, tablePlayerMap, prefs,
   });
 
@@ -365,7 +365,7 @@ export default function App() {
 
           <Dashboard
             stats={stats}
-            rounds={filteredRounds}
+            rounds={taiRounds}
             allRounds={allRounds}
             tablePlayerMap={tablePlayerMap}
             activeSession={activeSession}

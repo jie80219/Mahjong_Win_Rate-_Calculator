@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { Preferences, Round, TableSession } from '../types';
 import { computePlayerStats, filterRoundsByDate } from '../utils/stats';
-import { computeAllRoundsMoney, computeMoneyAcrossSessions, computeCumulativeMoney } from '../utils/money';
+import { computeAllRoundsMoney, computeMoneyAcrossSessions, computeCumulativeMoney, withDealerTai } from '../utils/money';
 
 interface Args {
   activeSession: TableSession | null;
@@ -27,7 +27,13 @@ export function useDashboardData({ activeSession, rounds, allRounds, sessions, t
     : (activeSession?.playerIds ? [...activeSession.playerIds] : []);
   const statPlayerIds = scopePlayerIds.length > 0 ? scopePlayerIds : (activeSession?.playerIds ? [...activeSession.playerIds] : []);
 
-  const stats = computePlayerStats(filteredRounds, statPlayerIds, tablePlayerMap);
+  // 圖表、大牌、台數分布看的是含莊家台的總台數；算錢仍用原始牌局
+  const taiRounds = useMemo(
+    () => withDealerTai(filteredRounds, sessions, allRounds),
+    [filteredRounds, sessions, allRounds],
+  );
+
+  const stats = computePlayerStats(taiRounds, statPlayerIds, tablePlayerMap);
 
   const tableDraw = activeSession && scope === 'table'
     ? filteredRounds.filter(r => r.resultType === 'draw' && r.tableSessionId === activeSession.id).length
@@ -45,5 +51,5 @@ export function useDashboardData({ activeSession, rounds, allRounds, sessions, t
     [roundsMoney, statPlayerKey],
   );
 
-  return { filteredRounds, stats, tableDraw, roundsMoney, cumulativeMoney };
+  return { filteredRounds, taiRounds, stats, tableDraw, roundsMoney, cumulativeMoney };
 }

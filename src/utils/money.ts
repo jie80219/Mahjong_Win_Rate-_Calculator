@@ -9,6 +9,61 @@ export interface RoundMoney {
   amounts: Record<string, number>;
 }
 
+export interface RoundDealerTai {
+  /** 算進這手牌的莊家台：莊家胡牌、或閒家胡莊家放的槍（每個付錢的人都一樣） */
+  inHand: number;
+  /** 閒家自摸時只有莊家另外多付的台數 */
+  dealerOnly: number;
+}
+
+/** 這局的莊家台（1 + 2×連莊），依牌桌的莊家規則決定算在誰身上 */
+export function computeRoundDealerTai(
+  round: Round,
+  session: TableSession,
+  dealer?: RoundDealer,
+): RoundDealerTai {
+  const none = { inHand: 0, dealerOnly: 0 };
+  if (round.resultType === 'draw' || !round.winnerId) return none;
+  const dealerId = dealer?.dealerId ?? round.dealerId ?? null;
+  if (!dealerId) return none;
+  const consecutive = dealer?.consecutive ?? round.dealerConsecutive ?? 0;
+  const extra = 2 * consecutive + 1;
+  const winnerIsDealer = round.winnerId === dealerId;
+  const standard = (session.dealerRule ?? 'legacy') === 'standard';
+
+  if (round.resultType === 'discardWin') {
+    return standard && (winnerIsDealer || round.discarderId === dealerId) ? { inHand: extra, dealerOnly: 0 } : none;
+  }
+  if (winnerIsDealer) return standard ? { inHand: extra, dealerOnly: 0 } : none;
+  return { inHand: 0, dealerOnly: extra };
+}
+
+/**
+ * 把 tai 換成含莊家台的總台數，給牌局紀錄、台數分布、大牌等統計用。
+ * 閒家自摸時莊家另付的台數不算進去（三家付的不一樣）。算錢一定要用原始牌局。
+ */
+export function withDealerTai(
+  rounds: Round[],
+  sessions: TableSession[],
+  allRounds: Round[] = rounds,
+): Round[] {
+  const dealerTai = new Map<string, number>();
+  const sessionIds = new Set(rounds.map(r => r.tableSessionId));
+  for (const s of sessions) {
+    if (!sessionIds.has(s.id)) continue;
+    const sessionRounds = allRounds.filter(r => r.tableSessionId === s.id);
+    const { byRound } = computeDealerTimeline(s, sessionRounds);
+    for (const r of sessionRounds) {
+      const { inHand } = computeRoundDealerTai(r, s, byRound.get(r.id));
+      if (inHand) dealerTai.set(r.id, inHand);
+    }
+  }
+  return rounds.map(r => {
+    const extra = dealerTai.get(r.id);
+    return extra && r.tai !== null ? { ...r, tai: r.tai + extra } : r;
+  });
+}
+
 export function computeRoundMoney(
   round: Round,
   session: TableSession,
@@ -33,19 +88,14 @@ export function computeRoundMoney(
     return result;
   }
 
-  const payment = base + round.tai * tai;
+  const { inHand, dealerOnly } = computeRoundDealerTai(round, session, dealer);
+  const payment = base + (round.tai + inHand) * tai;
   const multiplier = round.multiplier ?? 1;
   const dealerId = dealer?.dealerId ?? round.dealerId ?? null;
-  const consecutive = dealer?.consecutive ?? round.dealerConsecutive ?? 0;
-  const dealerExtra = dealerId ? (2 * consecutive + 1) * tai : 0;
-  const winnerIsDealer = round.winnerId === dealerId;
-  const standard = (session.dealerRule ?? 'legacy') === 'standard';
 
   if (round.resultType === 'discardWin') {
     if (!round.discarderId) return result;
-    let pay = payment;
-    if (standard && (winnerIsDealer || round.discarderId === dealerId)) pay += dealerExtra;
-    pay *= multiplier;
+    const pay = payment * multiplier;
     amounts[round.winnerId] = pay;
     amounts[round.discarderId] = -pay;
   }
@@ -54,7 +104,7 @@ export function computeRoundMoney(
     for (const p of players) {
       if (p === round.winnerId) continue;
       let pay = payment;
-      if (winnerIsDealer ? standard : p === dealerId) pay += dealerExtra;
+      if (p === dealerId) pay += dealerOnly * tai;
       pay *= multiplier;
       amounts[p] = -pay;
       amounts[round.winnerId] += pay;

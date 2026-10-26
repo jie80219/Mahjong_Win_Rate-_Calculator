@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import type { Round, TableSession } from '../types';
 import { getPlayerName } from '../db/players';
-import { computeAllRoundsMoney, computeCumulativeMoney, computeSettlement, formatMoney } from '../utils/money';
+import { computeAllRoundsMoney, computeCumulativeMoney, computeSettlement, formatMoney, withDealerTai } from '../utils/money';
 import { computePlayerStats } from '../utils/stats';
 import { drawReportCard, type ReportCardData } from '../utils/reportCard';
 import { splitGames } from '../utils/dealer';
@@ -35,9 +35,14 @@ export default function SettlementPanel({ session, rounds, onClose, ended }: Pro
     [sessionRounds, session, allSessionRounds, playerIds],
   );
   const transfers = useMemo(() => computeSettlement(totals), [totals]);
+  // 大牌、最大一把看含莊家台的總台數
+  const taiRounds = useMemo(
+    () => withDealerTai(sessionRounds, [session], allSessionRounds),
+    [sessionRounds, session, allSessionRounds],
+  );
   const stats = useMemo(
-    () => computePlayerStats(sessionRounds, playerIds, new Map([[session.id, playerIds]])),
-    [sessionRounds, playerIds, session.id],
+    () => computePlayerStats(taiRounds, playerIds, new Map([[session.id, playerIds]])),
+    [taiRounds, playerIds, session.id],
   );
 
   const ranking = useMemo(() => playerIds
@@ -88,7 +93,7 @@ export default function SettlementPanel({ session, rounds, onClose, ended }: Pro
   const handleGenerateCard = async () => {
     setGenerating(true);
     try {
-      const wins = sessionRounds.filter(r => r.winnerId && r.tai !== null);
+      const wins = taiRounds.filter(r => r.winnerId && r.tai !== null);
       const biggest = wins.reduce<Round | null>((b, r) => (!b || (r.tai ?? 0) > (b.tai ?? 0) ? r : b), null);
       const topBy = (key: 'selfDraws' | 'discards' | 'criticals') => {
         const max = Math.max(...stats.map(s => s[key]));
