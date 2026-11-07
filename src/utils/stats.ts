@@ -1,6 +1,7 @@
 import type { Round, PlayerStats, ComputedStats, DateRange } from '../types';
 import { startOfDay, subDays, isWithinInterval, parseISO } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
+import { isCriticalTai } from './rules';
 
 const TZ = 'Asia/Taipei';
 
@@ -75,17 +76,17 @@ export function computePlayerStats(
       if (r.resultType === 'selfDraw') {
         if (r.winnerId === pid) {
           stats.selfDraws++;
-          if (r.tai !== null && r.tai >= 5) stats.criticals++;
+          if (isCriticalTai(r.tai)) stats.criticals++;
         } else {
           stats.beDrawn++;
         }
       } else if (r.resultType === 'discardWin') {
         if (r.winnerId === pid) {
           stats.ronWins++;
-          if (r.tai !== null && r.tai >= 5) stats.criticals++;
+          if (isCriticalTai(r.tai)) stats.criticals++;
         } else if (r.discarderId === pid) {
           stats.discards++;
-          if (r.tai !== null && r.tai >= 5) stats.beCriticals++;
+          if (isCriticalTai(r.tai)) stats.beCriticals++;
         }
       }
     }
@@ -139,8 +140,8 @@ export function getMetricLabel(metric: string): string {
     win: '胡牌率',
     discard: '放槍率',
     beDrawn: '被摸率',
-    critical: '爆擊率',
-    beCritical: '被爆率',
+    critical: '大牌率',
+    beCritical: '放大槍率',
     overallWin: '勝率',
     drawRate: '總流局率',
     money: '金額',
@@ -216,17 +217,17 @@ export function computeCumulativeLine(
     if (r.resultType === 'selfDraw') {
       if (r.winnerId === playerId) {
         if (metric === 'selfDraw' || metric === 'win' || metric === 'overallWin') num++;
-        if (metric === 'critical' && r.tai !== null && r.tai >= 5) num++;
+        if (metric === 'critical' && isCriticalTai(r.tai)) num++;
       } else {
         if (metric === 'beDrawn') num++;
       }
     } else if (r.resultType === 'discardWin') {
       if (r.winnerId === playerId) {
         if (metric === 'win' || metric === 'overallWin') num++;
-        if (metric === 'critical' && r.tai !== null && r.tai >= 5) num++;
+        if (metric === 'critical' && isCriticalTai(r.tai)) num++;
       } else if (r.discarderId === playerId) {
         if (metric === 'discard') num++;
-        if (metric === 'beCritical' && r.tai !== null && r.tai >= 5) num++;
+        if (metric === 'beCritical' && isCriticalTai(r.tai)) num++;
       }
     }
 
@@ -241,4 +242,16 @@ export function computeCumulativeLine(
   }
 
   return points;
+}
+
+/**
+ * 圖表與趣味統計要顯示哪些玩家。
+ * 目前牌桌：只看本桌的人（篩選裡殘留別桌的人不算）；都沒選就是全桌。全部紀錄：照篩選。
+ */
+export function visiblePlayerIds(scope: 'table' | 'all', selected: string[], tableIds: readonly string[]): string[] {
+  if (scope === 'table') {
+    const picked = tableIds.filter(id => selected.includes(id));
+    return picked.length > 0 ? picked : [...tableIds];
+  }
+  return selected.length > 0 ? selected : [...tableIds];
 }

@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
-import { exportData, exportHtml, validateImport, importData } from '../utils/backup';
+import { exportData, validateImport, importData } from '../utils/backup';
+import { getCriticalTai, setCriticalTai, DEFAULT_CRITICAL_TAI } from '../utils/rules';
 import { db } from '../db';
 
 interface Props {
@@ -14,7 +15,14 @@ export default function BackupPanel({ onClose, onImported }: Props) {
   const [importJson, setImportJson] = useState<string>('');
   const [importing, setImporting] = useState(false);
   const [clearStage, setClearStage] = useState<ClearStage>('idle');
+  const [criticalTai, setCriticalTaiState] = useState(getCriticalTai);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const changeCriticalTai = useCallback((n: number) => {
+    const v = Math.max(1, n);
+    setCriticalTai(v);
+    setCriticalTaiState(v);
+  }, []);
 
   const handleExport = useCallback(async () => {
     const json = await exportData();
@@ -23,17 +31,6 @@ export default function BackupPanel({ onClose, onImported }: Props) {
     const a = document.createElement('a');
     a.href = url;
     a.download = `mahjong_backup_${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, []);
-
-  const handleExportHtml = useCallback(async () => {
-    const html = await exportHtml();
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `mahjong_report_${new Date().toISOString().slice(0, 10)}.html`;
     a.click();
     URL.revokeObjectURL(url);
   }, []);
@@ -95,18 +92,32 @@ export default function BackupPanel({ onClose, onImported }: Props) {
     <div className="panel-overlay">
       <div className="panel">
         <div className="panel-header">
-          <h3>備份與還原</h3>
+          <h3>設定與備份</h3>
           <button className="btn-icon" onClick={onClose}>✕</button>
         </div>
 
         <div className="backup-section">
+          <h4>規則</h4>
+          <div className="setting-row">
+            <span>大牌門檻</span>
+            <div className="custom-tai">
+              <button className="tai-adjust" onClick={() => changeCriticalTai(criticalTai - 1)}>−</button>
+              <span className="custom-tai-value">{criticalTai}</span>
+              <button className="tai-adjust" onClick={() => changeCriticalTai(criticalTai + 1)}>+</button>
+            </div>
+          </div>
+          <p className="setup-hint">
+            {criticalTai} 台以上算大牌，放槍給這種牌算放大槍{criticalTai !== DEFAULT_CRITICAL_TAI ? `（預設 ${DEFAULT_CRITICAL_TAI} 台）` : ''}。
+            牌型與台數到「台數計算表 → 自訂」設定，牌桌長度在開桌時選。
+          </p>
+        </div>
+
+        <div className="backup-section">
           <h4>匯出備份</h4>
+          <p className="setup-hint">包含所有牌桌、玩家，以及上面的規則與自訂牌型；換手機時用它完整還原</p>
           <div className="export-buttons">
             <button className="btn-primary btn-block" onClick={handleExport}>
               匯出 JSON
-            </button>
-            <button className="btn-secondary btn-block" onClick={handleExportHtml}>
-              匯出 HTML 報表
             </button>
           </div>
         </div>

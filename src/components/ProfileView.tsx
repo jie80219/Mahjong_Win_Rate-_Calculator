@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { Round, TableSession } from '../types';
-import { PLAYERS } from '../db/players';
+import type { Player, Round, TableSession } from '../types';
 import { formatMoney } from '../utils/money';
 import { formatRate } from '../utils/stats';
 import { buildPlayerProfile, buildStyleAxes } from '../utils/profile';
@@ -59,19 +58,28 @@ function StyleChart({ axes }: { axes: StyleAxis[] }) {
 }
 
 interface Props {
+  players: Player[];
+  /** 原始牌局，用來算錢 */
   rounds: Round[];
+  /** 含莊家台的牌局，用來算統計與台數 */
+  taiRounds: Round[];
   sessions: TableSession[];
   tablePlayerMap: Map<string, string[]>;
   initialPlayerId: string;
 }
 
-export default function ProfileView({ rounds, sessions, tablePlayerMap, initialPlayerId }: Props) {
+export default function ProfileView({ players, rounds, taiRounds, sessions, tablePlayerMap, initialPlayerId }: Props) {
   const [playerId, setPlayerId] = useState(initialPlayerId);
 
   const profile = useMemo(
-    () => buildPlayerProfile(playerId, rounds, sessions, tablePlayerMap),
-    [playerId, rounds, sessions, tablePlayerMap],
+    () => buildPlayerProfile(playerId, rounds, taiRounds, sessions, tablePlayerMap),
+    [playerId, rounds, taiRounds, sessions, tablePlayerMap],
   );
+  // 隱藏的玩家若有打過牌，仍可查歷史戰績
+  const visiblePlayers = useMemo(() => {
+    const played = new Set([...tablePlayerMap.values()].flat());
+    return players.filter(p => p.isActive || played.has(p.id));
+  }, [players, tablePlayerMap]);
   const axes = useMemo(() => buildStyleAxes(profile), [profile]);
   const { stats } = profile;
 
@@ -82,8 +90,8 @@ export default function ProfileView({ rounds, sessions, tablePlayerMap, initialP
     { label: '自摸率', value: formatRate(stats.selfDrawRate) },
     { label: '放槍率', value: formatRate(stats.discardRate) },
     { label: '被摸率', value: formatRate(stats.beDrawnRate) },
-    { label: '爆擊率', value: formatRate(stats.criticalRate) },
-    { label: '被爆率', value: formatRate(stats.beCriticalRate) },
+    { label: '大牌率', value: formatRate(stats.criticalRate) },
+    { label: '放大槍率', value: formatRate(stats.beCriticalRate) },
     { label: '平均胡牌台數', value: profile.averageWinTai === null ? '—' : `${profile.averageWinTai.toFixed(2)} 台` },
     { label: '單局最高台數', value: profile.highestTai === null ? '—' : `${profile.highestTai} 台` },
     { label: '最長連莊', value: `${profile.longestStreak} 次` },
@@ -94,7 +102,7 @@ export default function ProfileView({ rounds, sessions, tablePlayerMap, initialP
     <div className="profile">
       <h2 className="page-title">個人戰績</h2>
       <div className="player-tabs" role="group" aria-label="選擇玩家">
-        {PLAYERS.map(p => (
+        {visiblePlayers.map(p => (
           <button
             key={p.id}
             className={`player-tab ${p.id === playerId ? 'active' : ''}`}
@@ -129,7 +137,7 @@ export default function ProfileView({ rounds, sessions, tablePlayerMap, initialP
               ))}
             </ul>
             <p className="style-footnote">
-              分數僅供比較牌風，由下列參考值換算：胡牌率 40%、自摸率 20%、爆擊率 15%、連莊 5 次視為滿分；放槍率 0% 為滿分、30% 以上為 0。
+              分數僅供比較牌風，由下列參考值換算：胡牌率 40%、自摸率 20%、大牌率 15%、連莊 5 次視為滿分；放槍率 0% 為滿分、30% 以上為 0。
             </p>
           </section>
 

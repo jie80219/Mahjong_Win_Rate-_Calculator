@@ -590,3 +590,31 @@ button:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {
   .seat-tile { transition: none; }
 }
+
+/* 牌桌記帳面板 */
+.sheet-calc { margin-left: auto; }
+.sheet .leopard-toggle { width: 100%; margin-top: 10px; }
+.board-section .mj-rotate-bar { margin-top: 8px; }
+.session-row-meta .tag-muted { margin-right: 6px; }
+.hand-type-group { margin: 16px 0 4px; font-size: 14px; color: var(--text-secondary); }
+
+/* 金額一律用主題的贏／輸色 */
+.card-money.positive, .money-detail-item.positive { color: var(--gain); background: color-mix(in srgb, var(--gain) 12%, transparent); }
+.card-money.negative, .money-detail-item.negative { color: var(--loss); background: color-mix(in srgb, var(--loss) 12%, transparent); }
+
+/* 深色模式的狀態色偏亮，上面的字要用深色才讀得清楚 */
+:root { --on-status: #fff; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --on-status: #141821; }
+}
+:root[data-theme="dark"] { --on-status: #141821; }
+.mj-seat.is-winner, .mj-seat.is-discarder,
+.mj-seat.is-winner .mj-seat-wind, .mj-seat.is-discarder .mj-seat-wind,
+.btn-danger-sm { color: var(--on-status); }
+
+/* 窄螢幕：標題和卡片名字不折行 */
+.card-name-row h4 { white-space: nowrap; }
+.card-header { flex-wrap: wrap; }
+@media (max-width: 340px) {
+  .app-header h1 { font-size: 19px; white-space: nowrap; }
+}

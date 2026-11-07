@@ -3,7 +3,12 @@ import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import type { DealerState, Round, TableSession } from '../types';
 import { getPlayerName } from '../db/players';
 import { computeAllRoundsMoney, computeCumulativeMoney, computeRoundMoney, formatMoney } from '../utils/money';
+import { gameName } from '../utils/dealer';
 import { nowISO } from '../utils/id';
+import { isCriticalTai } from '../utils/rules';
+import { leopardMultiplier } from '../utils/taiTable';
+import { loadMe, loadSeatRotation, saveMe, saveSeatRotation } from '../utils/preferences';
+import TaiCalculator from './TaiCalculator';
 
 const SEAT_WINDS = ['東', '南', '西', '北'];
 const SEAT_POSITIONS = ['bottom', 'right', 'top', 'left'] as const;
@@ -45,13 +50,32 @@ export default function TableBoard({ session, rounds, dealerState, dealerControl
   const [drag, setDrag] = useState<DragState | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const suppressClick = useRef(false);
+  const [manualRotation, setManualRotation] = useState(() => loadSeatRotation(session.id));
+  const [me, setMe] = useState(loadMe);
+
+  // 設定了「我是誰」且我在這桌：自動把我轉到下方；否則用手動轉的方向
+  const mySeat = me ? seats.indexOf(me) : -1;
+  const rotation = mySeat >= 0 ? (4 - mySeat) % 4 : manualRotation;
+  const bottomWind = SEAT_WINDS[(4 - rotation) % 4];
+
+  const changeMe = useCallback((pid: string) => {
+    const next = pid || null;
+    saveMe(next);
+    setMe(next);
+  }, []);
+
+  const rotate = useCallback((step: number) => {
+    setManualRotation(prev => {
+      const next = (prev + step + 4) % 4;
+      saveSeatRotation(session.id, next);
+      return next;
+    });
+  }, [session.id]);
 
   const totals = useMemo(
     () => computeCumulativeMoney(computeAllRoundsMoney(rounds, session), [...session.playerIds]),
     [rounds, session],
   );
-
-  const dealerIndex = dealerState ? seats.indexOf(dealerState.dealerId) : -1;
 
   const clearSelection = useCallback(() => {
     setSelfDrawMode(false);
@@ -154,7 +178,10 @@ export default function TableBoard({ session, rounds, dealerState, dealerControl
         <div className="board-center">
           {dealerState ? (
             <>
-              <strong>{dealerState.wind}圈 第 {dealerState.windRound} 局</strong>
+              <strong>
+                {dealerState.jiang > 1 && `${gameName(session, dealerState.jiang)} `}
+                {dealerState.wind}風{'東南西北'[dealerState.windRound - 1]}
+              </strong>
               <span>
                 {getPlayerName(dealerState.dealerId)} 坐莊
                 {dealerState.consecutive > 0 && `・連 ${dealerState.consecutive}`}
@@ -168,26 +195,25 @@ export default function TableBoard({ session, rounds, dealerState, dealerControl
         {seats.map((pid, i) => {
           const amount = totals[pid] ?? 0;
           const isDealer = dealerState?.dealerId === pid;
-          const windIndex = dealerIndex >= 0 ? (i - dealerIndex + 4) % 4 : i;
           const state = [
             payerId === pid || drag?.from === pid && drag.active ? 'is-payer' : '',
             drag?.overId === pid ? 'is-target' : '',
             selfDrawMode ? 'is-pickable' : '',
           ].join(' ');
           return (
-            <div key={pid} className={`seat seat-${SEAT_POSITIONS[i]}`}>
+            <div key={pid} className={`seat seat-${SEAT_POSITIONS[(i + rotation) % 4]}`}>
               <button
                 type="button"
                 data-seat={pid}
                 className={`seat-tile ${state}`}
-                aria-label={`${getPlayerName(pid)}，${SEAT_WINDS[windIndex]}家${isDealer ? '，莊家' : ''}，累計 ${formatMoney(amount)}`}
+                aria-label={`${getPlayerName(pid)}，${SEAT_WINDS[i]}家${isDealer ? '，莊家' : ''}，累計 ${formatMoney(amount)}`}
                 onClick={() => handleSeatClick(pid)}
                 onPointerDown={e => handlePointerDown(pid, e)}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
                 onPointerCancel={() => setDrag(null)}
               >
-                <span className="seat-wind">{SEAT_WINDS[windIndex]}</span>
+                <span className="seat-wind">{SEAT_WINDS[i]}</span>
                 <span className="seat-name">{getPlayerName(pid)}</span>
                 {isDealer && <span className="seat-dealer">莊</span>}
               </button>
@@ -207,6 +233,25 @@ export default function TableBoard({ session, rounds, dealerState, dealerControl
       </div>
 
       <p className="board-hint" aria-live="polite">{hint}</p>
+
+      <div className="mj-rotate-bar">
+        <label>
+          我是
+          <select value={mySeat >= 0 ? me! : ''} onChange={e => changeMe(e.target.value)}>
+            <option value="">未設定</option>
+            {seats.map(pid => <option key={pid} value={pid}>{getPlayerName(pid)}</option>)}
+          </select>
+        </label>
+        {mySeat >= 0 ? (
+          <span>自動轉到下方（{bottomWind}家）</span>
+        ) : (
+          <>
+            <button className="btn-icon-sm" onClick={() => rotate(-1)} aria-label="桌位逆時針轉">⟲</button>
+            <span>下方是{bottomWind}家</span>
+            <button className="btn-icon-sm" onClick={() => rotate(1)} aria-label="桌位順時針轉">⟳</button>
+          </>
+        )}
+      </div>
 
       <div className="board-actions">
         <button
@@ -228,7 +273,7 @@ export default function TableBoard({ session, rounds, dealerState, dealerControl
           session={session}
           dealerState={dealerState}
           onCancel={() => setSettlement(null)}
-          onConfirm={async (tai) => {
+          onConfirm={async (tai, taiNote, multiplier) => {
             await onSave({
               tableSessionId: session.id,
               playedAt: nowISO(),
@@ -236,6 +281,8 @@ export default function TableBoard({ session, rounds, dealerState, dealerControl
               winnerId: settlement.type === 'draw' ? null : settlement.winnerId,
               discarderId: settlement.type === 'discardWin' ? settlement.discarderId : null,
               tai,
+              taiNote: settlement.type !== 'draw' && taiNote ? taiNote : undefined,
+              multiplier: settlement.type !== 'draw' && multiplier > 1 ? multiplier : undefined,
             });
             setSettlement(null);
           }}
@@ -250,14 +297,22 @@ interface SheetProps {
   session: TableSession;
   dealerState: DealerState | null;
   onCancel: () => void;
-  onConfirm: (tai: number | null) => Promise<void>;
+  onConfirm: (tai: number | null, taiNote: string, multiplier: number) => Promise<void>;
 }
 
 function SettlementSheet({ settlement, session, dealerState, onCancel, onConfirm }: SheetProps) {
-  const [tai, setTai] = useState<number | null>(null);
+  const [tai, setTaiValue] = useState<number | null>(null);
+  const [taiNote, setTaiNote] = useState('');
+  const [multiplier, setMultiplier] = useState(1);
+  const [showCalc, setShowCalc] = useState(false);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
   const isDraw = settlement.type === 'draw';
+  // 手動改台數時，計算表帶來的牌型說明就不再準確
+  const setTai = (value: number | null | ((prev: number | null) => number | null)) => {
+    setTaiValue(value);
+    setTaiNote('');
+  };
   const isCustom = tai !== null && tai >= 10;
 
   const title = (() => {
@@ -279,10 +334,11 @@ function SettlementSheet({ settlement, session, dealerState, onCancel, onConfirm
       winnerId: settlement.winnerId,
       discarderId: settlement.type === 'discardWin' ? settlement.discarderId : null,
       tai,
+      multiplier: multiplier > 1 ? multiplier : undefined,
       dealerId: dealerState?.dealerId ?? null,
       dealerConsecutive: dealerState?.consecutive ?? 0,
     }, session);
-  }, [settlement, tai, session, dealerState]);
+  }, [settlement, tai, multiplier, session, dealerState]);
 
   const canConfirm = !saving && (isDraw || tai !== null);
 
@@ -290,7 +346,7 @@ function SettlementSheet({ settlement, session, dealerState, onCancel, onConfirm
     setSaving(true);
     setFailed(false);
     try {
-      await onConfirm(isDraw ? null : tai);
+      await onConfirm(isDraw ? null : tai, taiNote, multiplier);
     } catch {
       setFailed(true);
       setSaving(false);
@@ -314,8 +370,10 @@ function SettlementSheet({ settlement, session, dealerState, onCancel, onConfirm
           <>
             <div className="sheet-label">
               <span>台數</span>
-              {tai !== null && tai >= 5 && <span className="critical-badge">爆擊</span>}
+              {isCriticalTai(tai) && <span className="critical-badge">大牌</span>}
+              <button className="btn-link btn-calc sheet-calc" onClick={() => setShowCalc(true)}>用計算表算</button>
             </div>
+            {taiNote && <p className="tai-note">{taiNote}</p>}
             <div className="tai-pad">
               {TAI_OPTIONS.map(t => (
                 <button
@@ -349,6 +407,15 @@ function SettlementSheet({ settlement, session, dealerState, onCancel, onConfirm
               </button>
             </div>
 
+            <button
+              className={`leopard-toggle ${multiplier > 1 ? 'active' : ''}`}
+              aria-pressed={multiplier > 1}
+              onClick={() => setMultiplier(m => (m > 1 ? 1 : leopardMultiplier()))}
+              title="三顆骰子點數一樣：整筆金額（含底、莊家台）乘倍率"
+            >
+              🎲 骰規豹子 ×{multiplier > 1 ? multiplier : leopardMultiplier()}
+            </button>
+
             {preview && (
               <ul className="sheet-preview">
                 {(session.seatOrder ?? session.playerIds).map(pid => {
@@ -374,6 +441,22 @@ function SettlementSheet({ settlement, session, dealerState, onCancel, onConfirm
           </button>
         </div>
       </div>
+
+      {showCalc && (
+        <div onClick={e => e.stopPropagation()}>
+          <TaiCalculator
+            resultType={settlement.type}
+            leopard={multiplier > 1}
+            onApply={(t, note, m) => {
+              setTaiValue(t);
+              setTaiNote(note);
+              setMultiplier(m);
+              setShowCalc(false);
+            }}
+            onClose={() => setShowCalc(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }

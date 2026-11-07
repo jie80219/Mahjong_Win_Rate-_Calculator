@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import type { ComputedStats, Round, TableSession } from '../types';
-import { PLAYERS, getPlayerName } from '../db/players';
+import type { ComputedStats, Player, Round, TableSession } from '../types';
+import { getPlayerName } from '../db/players';
 import { computePlayerStats, formatRate } from '../utils/stats';
 
 const MIN_ROUNDS = 5;
@@ -53,20 +53,22 @@ const RANKINGS: Ranking[] = [
 ];
 
 interface Props {
+  players: Player[];
   sessions: TableSession[];
+  /** 含莊家台的牌局，排行榜的台數與統計儀表板一致 */
   rounds: Round[];
   tablePlayerMap: Map<string, string[]>;
   onNewTable: () => void;
   onResumeSession: (session: TableSession) => void;
 }
 
-export default function HomeView({ sessions, rounds, tablePlayerMap, onNewTable, onResumeSession }: Props) {
+export default function HomeView({ players, sessions, rounds, tablePlayerMap, onNewTable, onResumeSession }: Props) {
   const [rankingKey, setRankingKey] = useState(RANKINGS[0].key);
   const ranking = RANKINGS.find(r => r.key === rankingKey) ?? RANKINGS[0];
 
   const stats = useMemo(
-    () => computePlayerStats(rounds, PLAYERS.map(p => p.id), tablePlayerMap),
-    [rounds, tablePlayerMap],
+    () => computePlayerStats(rounds, players.map(p => p.id), tablePlayerMap),
+    [rounds, players, tablePlayerMap],
   );
   const rows = useMemo(
     () => ranking.rows(stats, rounds).sort((a, b) => b.sort - a.sort).slice(0, 5),
@@ -88,7 +90,7 @@ export default function HomeView({ sessions, rounds, tablePlayerMap, onNewTable,
 
       <section className="home-section">
         <div className="section-title">
-          <h3>繼續上次的牌桌</h3>
+          <h3>最近牌桌</h3>
           <span>{sessions.length} 桌</span>
         </div>
         {sessions.length === 0 ? (
@@ -99,6 +101,7 @@ export default function HomeView({ sessions, rounds, tablePlayerMap, onNewTable,
               <button key={s.id} className="session-row" onClick={() => onResumeSession(s)}>
                 <span className="session-row-names">{s.playerIds.map(getPlayerName).join('・')}</span>
                 <span className="session-row-meta">
+                  {s.endedAt && <span className="tag-muted">已結束</span>}
                   底 {s.baseMoney ?? 0} ／ 台 {s.taiMoney ?? 0}・{new Date(s.startedAt).toLocaleDateString('zh-TW')}
                 </span>
               </button>

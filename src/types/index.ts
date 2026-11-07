@@ -10,14 +10,29 @@ export interface DealerOverride {
   afterSequence: number;
   dealerIndex: number;
   consecutive: number;
+  seatOrder?: [string, string, string, string];
+  /** 調整後的圈風（0 = 東風，4 = 第二將東風）；局由莊家座位決定 */
+  windCount?: number;
+  /** 前一版的欄位（換過幾次莊），只用來讀舊資料 */
+  rotations?: number;
 }
+
+/**
+ * standard：莊家胡牌、放槍、被摸皆加計莊家台（1 + 2×連莊）
+ * legacy：只有閒家自摸時莊家多付莊家台（舊牌桌的算法）
+ */
+export type DealerRule = 'standard' | 'legacy';
 
 export interface TableSession {
   id: string;
   playerIds: [string, string, string, string];
   seatOrder?: [string, string, string, string];
+  initialSeatOrder?: [string, string, string, string];
   initialDealerIndex?: number;
   dealerOverrides?: DealerOverride[];
+  dealerRule?: DealerRule;
+  /** 牌桌長度：打幾圈算一將（4 = 一將、2 = 半將、1 = 一圈、0 = 不提示結算），沒設定是 4 */
+  windsPerGame?: number;
   baseMoney?: number;
   taiMoney?: number;
   startedAt: string;
@@ -33,6 +48,10 @@ export interface Round {
   winnerId: string | null;
   discarderId: string | null;
   tai: number | null;
+  /** 用台數計算表算出的牌型，例如「門清自摸、混一色」 */
+  taiNote?: string;
+  /** 骰規豹子等倍率：整筆金額（含底、莊家台）乘上這個數，沒有就是 1 */
+  multiplier?: number;
   dealerId?: string | null;
   dealerConsecutive?: number;
   createdAt: string;
@@ -46,10 +65,17 @@ export interface DealerState {
   consecutive: number;
   wind: WindName;
   windRound: number;
+  /** 第幾個圈風（0 = 東風，4 = 第二將東風），局則是莊家座位 */
+  windCount: number;
+  /** 第幾將（四圈打完算一將） */
+  jiang: number;
+  /** 剛好打完一將（北風北結束） */
+  jiangComplete: boolean;
 }
 
 export interface Preferences {
-  dashboardMode: 'bar' | 'line' | 'list' | 'card';
+  dashboardMode: 'bar' | 'line' | 'list' | 'card' | 'fun';
+  keepAwake: boolean;
   selectedMetric: MetricKey;
   selectedPlayerIds: string[];
   scope: 'table' | 'all';

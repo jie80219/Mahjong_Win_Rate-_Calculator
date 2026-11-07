@@ -1,13 +1,15 @@
 import { useState, useCallback } from 'react';
 import type { ComputedStats, Preferences, MetricKey, Round, TableSession } from '../types';
 import type { RoundMoney } from '../utils/money';
-import { PLAYERS, getPlayerName } from '../db/players';
+import { getAllPlayers, getPlayerName } from '../db/players';
+import { visiblePlayerIds } from '../utils/stats';
 import BarChartView from './views/BarChartView';
 import MoneyBarChart from './views/MoneyBarChart';
 import LineChartView from './views/LineChartView';
 import ListView from './views/ListView';
 import CardView from './views/CardView';
 import MoneyDetailCards from './views/MoneyDetailCards';
+import FunView from './views/FunView';
 
 interface Props {
   stats: ComputedStats[];
@@ -30,8 +32,8 @@ const METRICS: { key: MetricKey; label: string }[] = [
   { key: 'overallWin', label: '勝率' },
   { key: 'discard', label: '放槍' },
   { key: 'beDrawn', label: '被摸' },
-  { key: 'critical', label: '爆擊' },
-  { key: 'beCritical', label: '被爆' },
+  { key: 'critical', label: '大牌' },
+  { key: 'beCritical', label: '放大槍' },
   { key: 'drawRate', label: '流局' },
   { key: 'money', label: '金額' },
 ];
@@ -41,6 +43,7 @@ const VIEW_MODES = [
   { key: 'line' as const, label: '折線' },
   { key: 'list' as const, label: '清單' },
   { key: 'card' as const, label: '卡片' },
+  { key: 'fun' as const, label: '趣味' },
 ];
 
 const DATE_PRESETS = [
@@ -54,12 +57,14 @@ const DATE_PRESETS = [
 export default function Dashboard({
   stats,
   rounds,
+  allRounds,
   tablePlayerMap,
   activeSession,
   prefs,
   onUpdatePrefs,
   tableDraw,
   onOpenHistory,
+  sessions,
   roundsMoney,
   cumulativeMoney,
 }: Props) {
@@ -77,17 +82,21 @@ export default function Dashboard({
     }
   }, [activeSession, onUpdatePrefs]);
 
+  const chartPlayerIds = visiblePlayerIds(scope, prefs.selectedPlayerIds, activeSession.playerIds);
+
   const togglePlayerFilter = useCallback((pid: string) => {
-    const current = prefs.selectedPlayerIds;
+    const current = chartPlayerIds;
     if (current.includes(pid)) {
       if (current.length <= 1) return;
       onUpdatePrefs({ selectedPlayerIds: current.filter(id => id !== pid) });
     } else {
       onUpdatePrefs({ selectedPlayerIds: [...current, pid] });
     }
-  }, [prefs.selectedPlayerIds, onUpdatePrefs]);
+  }, [chartPlayerIds, onUpdatePrefs]);
 
-  const availablePlayers = scope === 'all' ? PLAYERS : PLAYERS.filter(p => activeSession.playerIds.includes(p.id));
+  const availablePlayers = scope === 'all'
+    ? getAllPlayers().filter(p => p.isActive || prefs.selectedPlayerIds.includes(p.id))
+    : getAllPlayers().filter(p => activeSession.playerIds.includes(p.id));
 
   const dateLabel = (() => {
     switch (prefs.dateRange.type) {
@@ -99,7 +108,7 @@ export default function Dashboard({
     }
   })();
 
-  const settingSummary = `有效局為分母 · 被爆僅放槍 · ${dateLabel}`;
+  const settingSummary = `有效局為分母 · 放大槍只算放槍 · ${dateLabel}`;
 
   const totalRounds = rounds.length;
   const effectiveRounds = rounds.filter(r => r.resultType !== 'draw').length;
@@ -132,7 +141,7 @@ export default function Dashboard({
         {availablePlayers.map(p => (
           <button
             key={p.id}
-            className={`filter-btn ${prefs.selectedPlayerIds.includes(p.id) ? 'active' : ''}`}
+            className={`filter-btn ${chartPlayerIds.includes(p.id) ? 'active' : ''}`}
             onClick={() => togglePlayerFilter(p.id)}
           >
             {p.displayName}
@@ -232,15 +241,16 @@ export default function Dashboard({
             {prefs.dashboardMode === 'bar' && prefs.selectedMetric === 'money' && (
               <MoneyBarChart
                 cumulativeMoney={cumulativeMoney}
-                playerIds={prefs.selectedPlayerIds.length > 0 ? prefs.selectedPlayerIds : [...activeSession.playerIds]}
+                playerIds={chartPlayerIds}
               />
             )}
             {prefs.dashboardMode === 'line' && (
               <LineChartView
                 rounds={rounds}
-                playerIds={prefs.selectedPlayerIds.length > 0 ? prefs.selectedPlayerIds : [...activeSession.playerIds]}
+                playerIds={chartPlayerIds}
                 metric={prefs.selectedMetric}
                 tablePlayerMap={tablePlayerMap}
+                roundsMoney={roundsMoney}
               />
             )}
             {prefs.dashboardMode === 'list' && (
@@ -249,9 +259,19 @@ export default function Dashboard({
             {prefs.dashboardMode === 'card' && (
               <CardView stats={statsWithNames} onOpenHistory={onOpenHistory} cumulativeMoney={cumulativeMoney} />
             )}
+            {prefs.dashboardMode === 'fun' && (
+              <FunView
+                stats={statsWithNames}
+                rounds={rounds}
+                allRounds={allRounds}
+                sessions={sessions}
+                playerIds={chartPlayerIds}
+                tablePlayerMap={tablePlayerMap}
+              />
+            )}
           </div>
 
-          {prefs.selectedMetric === 'money' && roundsMoney.length > 0 && (
+          {scope === 'table' && prefs.selectedMetric === 'money' && (prefs.dashboardMode === 'bar' || prefs.dashboardMode === 'line') && roundsMoney.length > 0 && (
             <MoneyDetailCards roundsMoney={roundsMoney} playerIds={[...activeSession.playerIds]} />
           )}
         </>

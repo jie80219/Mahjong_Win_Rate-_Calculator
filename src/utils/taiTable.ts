@@ -1,0 +1,240 @@
+// 台灣十六張麻將常見台數表。莊家／連莊台由莊家系統自動計算，這裡不列入。
+
+export interface TaiItem {
+  key: string;
+  name: string;
+  tai: number;
+  desc: string;
+  /** 可以重複計算（例如花牌、三元牌刻子） */
+  max?: number;
+  /** 選了這項就不能同時算的項目 */
+  excludes?: string[];
+  /** 已包含在這項裡、不另外計台的項目（例如嚦咕已含門清），選了之後會被鎖住 */
+  covers?: string[];
+  /** 被包含時改成哪一項（例如門清自摸被嚦咕包含時，保留自摸） */
+  coverReplace?: Record<string, string>;
+  /** 不加台數，而是整筆金額乘上倍率（tai 欄位當作倍數） */
+  multiplier?: boolean;
+}
+
+export interface TaiGroup {
+  title: string;
+  items: TaiItem[];
+}
+
+export const TAI_GROUPS: TaiGroup[] = [
+  {
+    title: '基本',
+    items: [
+      { key: 'menqing', name: '門清', tai: 1, desc: '沒有吃、碰、明槓', excludes: ['menqingZimo', 'quanqiu'] },
+      { key: 'zimo', name: '自摸', tai: 1, desc: '自己摸進胡牌', excludes: ['menqingZimo'] },
+      { key: 'menqingZimo', name: '門清自摸', tai: 3, desc: '門清又自摸（取代門清＋自摸）', excludes: ['menqing', 'zimo', 'quanqiu', 'banqiu'] },
+      { key: 'dutin', name: '獨聽', tai: 1, desc: '單吊、中洞、邊張只聽一張' },
+      { key: 'banqiu', name: '半求人', tai: 1, desc: '吃碰到只剩一張單吊並自摸', excludes: ['quanqiu', 'menqing', 'menqingZimo', 'ligu', 'migi'] },
+      { key: 'quanqiu', name: '全求人', tai: 2, desc: '全部吃碰，單吊別人放槍', excludes: ['menqing', 'menqingZimo', 'banqiu', 'zimo', 'ligu', 'migi'] },
+      { key: 'pinghu', name: '平胡', tai: 2, desc: '無字無花、全順子、聽兩面、非自摸', excludes: ['ligu'] },
+      { key: 'gang', name: '槓', tai: 1, desc: '每一組槓 1 台（明槓、暗槓都算）', max: 4, excludes: ['ligu'] },
+    ],
+  },
+  {
+    title: '字牌與花牌',
+    items: [
+      { key: 'quanfeng', name: '圈風', tai: 1, desc: '本圈風牌的刻子' },
+      { key: 'menfeng', name: '門風', tai: 1, desc: '自己座位風牌的刻子' },
+      { key: 'sanyuan', name: '三元牌', tai: 1, desc: '中、發、白的刻子（每組 1 台）', max: 3 },
+      { key: 'flower', name: '花牌', tai: 1, desc: '對到自己位置的花（每張 1 台）', max: 2 },
+      { key: 'huagang', name: '花槓', tai: 2, desc: '春夏秋冬或梅蘭竹菊一整組', max: 2 },
+    ],
+  },
+  {
+    title: '特殊胡法',
+    items: [
+      { key: 'gangkai', name: '槓上開花', tai: 1, desc: '槓牌後補牌自摸' },
+      { key: 'qianggang', name: '搶槓', tai: 1, desc: '胡別人加槓的那張牌' },
+      { key: 'haidi', name: '海底撈月', tai: 1, desc: '摸最後一張牌自摸' },
+      { key: 'hedi', name: '河底撈魚', tai: 1, desc: '胡最後一張打出的牌' },
+      { key: 'migi', name: 'Migi', tai: 8, desc: '四家皆門清，且在 8 張牌以內（含）喊出', excludes: ['quanqiu', 'banqiu'] },
+    ],
+  },
+  {
+    title: '牌型',
+    items: [
+      { key: 'sananke', name: '三暗刻', tai: 2, desc: '三組自己摸到的刻子', excludes: ['siananke', 'wuananke', 'ligu'] },
+      { key: 'pengpeng', name: '碰碰胡', tai: 4, desc: '全部都是刻子', excludes: ['ligu'] },
+      {
+        key: 'ligu', name: '嚦咕嚦咕', tai: 8, desc: '七對加一刻，一定要門清（已含門清，不另計）',
+        covers: ['menqing', 'menqingZimo'],
+        coverReplace: { menqingZimo: 'zimo' },
+        excludes: ['pengpeng', 'pinghu', 'quanqiu', 'banqiu', 'sananke', 'siananke', 'wuananke', 'gang'],
+      },
+      { key: 'hunyise', name: '混一色', tai: 4, desc: '一種花色加字牌', excludes: ['qingyise', 'ziyise'] },
+      { key: 'xiaosanyuan', name: '小三元', tai: 4, desc: '三元牌兩刻一對', excludes: ['dasanyuan'] },
+      { key: 'siananke', name: '四暗刻', tai: 5, desc: '四組暗刻', excludes: ['sananke', 'wuananke', 'ligu'] },
+      { key: 'qingyise', name: '清一色', tai: 8, desc: '只有一種花色', excludes: ['hunyise', 'ziyise'] },
+      { key: 'wuananke', name: '五暗刻', tai: 8, desc: '五組暗刻', excludes: ['sananke', 'siananke', 'ligu'] },
+      { key: 'dasanyuan', name: '大三元', tai: 8, desc: '中發白都是刻子', excludes: ['xiaosanyuan', 'sanyuan'] },
+      { key: 'xiaosixi', name: '小四喜', tai: 8, desc: '風牌三刻一對', excludes: ['dasixi'] },
+      { key: 'dasixi', name: '大四喜', tai: 16, desc: '東南西北都是刻子', excludes: ['xiaosixi', 'quanfeng', 'menfeng'] },
+      { key: 'ziyise', name: '字一色', tai: 16, desc: '全部都是字牌', excludes: ['hunyise', 'qingyise'] },
+      { key: 'baxian', name: '八仙過海', tai: 8, desc: '八張花全拿', excludes: ['flower', 'huagang'] },
+      { key: 'qiqiangyi', name: '七搶一', tai: 8, desc: '七張花搶別人一張' },
+    ],
+  },
+  {
+    title: '天地人胡',
+    items: [
+      { key: 'tianhu', name: '天胡', tai: 16, desc: '莊家起手就胡' },
+      { key: 'dihu', name: '地胡', tai: 16, desc: '閒家第一輪自摸' },
+      { key: 'renhu', name: '人胡', tai: 8, desc: '第一輪胡別人打出的牌' },
+    ],
+  },
+  {
+    title: '骰規',
+    items: [
+      { key: 'diceRed', name: '骰規全紅', tai: 1, desc: '三顆骰子都是紅點（1 或 4）', excludes: ['diceStraight'] },
+      { key: 'diceStraight', name: '骰規順子', tai: 2, desc: '三顆骰子點數連號，例如 2-3-4', excludes: ['diceRed', 'leopard'] },
+      { key: 'leopard', name: '骰規豹子', tai: 3, desc: '三顆骰子點數一樣，整筆金額（含底、莊家台）乘倍率；1-1-1、4-4-4 可再加全紅', excludes: ['diceStraight'], multiplier: true },
+    ],
+  },
+];
+
+/** 內建的牌型（不含使用者自訂） */
+export const ALL_TAI_ITEMS: TaiItem[] = TAI_GROUPS.flatMap(g => g.items);
+
+const OVERRIDE_KEY = 'mahjong_tai_overrides';
+const CUSTOM_KEY = 'mahjong_tai_custom';
+const HIDDEN_KEY = 'mahjong_tai_hidden';
+
+function loadJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveJson(key: string, value: unknown): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch { /* ignore */ }
+}
+
+/** 使用者自己加的家規牌型（存在本機） */
+export function loadCustomTaiItems(): TaiItem[] {
+  const items = loadJson<TaiItem[]>(CUSTOM_KEY, []);
+  return Array.isArray(items) ? items.map(i => ({ ...i, desc: i.desc || '自訂牌型' })) : [];
+}
+
+export function saveCustomTaiItems(items: TaiItem[]): void {
+  saveJson(CUSTOM_KEY, items.map(({ key, name, tai, multiplier }) => ({ key, name, tai, ...(multiplier ? { multiplier } : {}) })));
+}
+
+export function newCustomTaiItem(name: string, tai: number, multiplier: boolean): TaiItem {
+  return {
+    key: `c_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`,
+    name: name.trim(),
+    tai: Math.max(multiplier ? 1 : 0, Math.round(tai) || 0),
+    desc: '自訂牌型',
+    ...(multiplier ? { multiplier: true } : {}),
+  };
+}
+
+/** 隱藏不用的牌型（只是不顯示，台數照舊） */
+export function loadHiddenTaiKeys(): string[] {
+  const keys = loadJson<string[]>(HIDDEN_KEY, []);
+  return Array.isArray(keys) ? keys : [];
+}
+
+export function saveHiddenTaiKeys(keys: string[]): void {
+  saveJson(HIDDEN_KEY, keys);
+}
+
+/** 內建＋自訂的全部牌型 */
+export function allTaiItems(): TaiItem[] {
+  return [...ALL_TAI_ITEMS, ...loadCustomTaiItems()];
+}
+
+/** 各家規則不同，允許自訂每一項的台數（存在本機） */
+export function loadTaiOverrides(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(OVERRIDE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveTaiOverrides(overrides: Record<string, number>): void {
+  try {
+    localStorage.setItem(OVERRIDE_KEY, JSON.stringify(overrides));
+  } catch { /* ignore */ }
+}
+
+export function taiOf(item: TaiItem, overrides: Record<string, number>): number {
+  return overrides[item.key] ?? item.tai;
+}
+
+const LEOPARD_ITEM = ALL_TAI_ITEMS.find(i => i.key === 'leopard')!;
+
+/** 豹子目前設定的倍率（預設 3 倍，可在計算表的自訂台數修改） */
+export function leopardMultiplier(overrides: Record<string, number> = loadTaiOverrides()): number {
+  return Math.max(1, taiOf(LEOPARD_ITEM, overrides));
+}
+
+/** 計算表選到的倍率項目（豹子、自訂倍率牌型）相乘，沒選就是 1 */
+export function multiplierOf(counts: Record<string, number>, overrides: Record<string, number>): number {
+  let m = 1;
+  for (const item of allTaiItems()) {
+    if (item.multiplier && (counts[item.key] ?? 0) > 0) m *= Math.max(1, taiOf(item, overrides));
+  }
+  return m;
+}
+
+function select(counts: Record<string, number>, item: TaiItem, count: number): void {
+  counts[item.key] = count;
+  if (count > 0) for (const ex of item.excludes ?? []) counts[ex] = 0;
+}
+
+/** 這一項目前是否被已選的項目包含（例如選了嚦咕，門清就不另計），回傳包含它的項目 */
+export function coveredBy(counts: Record<string, number>, key: string): TaiItem | null {
+  return allTaiItems().find(i => (counts[i.key] ?? 0) > 0 && i.covers?.includes(key)) ?? null;
+}
+
+/** 點一下某個牌型：可重複的項目會累加到上限後歸零，並處理互斥與包含關係 */
+export function toggleTaiItem(prev: Record<string, number>, key: string): Record<string, number> {
+  const item = allTaiItems().find(i => i.key === key);
+  if (!item || coveredBy(prev, key)) return prev;
+  const next = { ...prev };
+  const current = next[key] ?? 0;
+  const nextCount = current >= (item.max ?? 1) ? 0 : current + 1;
+  select(next, item, nextCount);
+
+  // 選了會包含其他項目的牌型（嚦咕含門清）：被包含的項目不另計，門清自摸則保留自摸
+  if (nextCount > 0) {
+    for (const coveredKey of item.covers ?? []) {
+      if ((next[coveredKey] ?? 0) === 0) continue;
+      next[coveredKey] = 0;
+      const replaceKey = item.coverReplace?.[coveredKey];
+      const replacement = replaceKey && allTaiItems().find(i => i.key === replaceKey);
+      if (replacement) select(next, replacement, 1);
+    }
+  }
+  return next;
+}
+
+/** counts：每一項選了幾次 */
+export function sumTai(counts: Record<string, number>, overrides: Record<string, number>, extra = 0): number {
+  let total = extra;
+  for (const item of allTaiItems()) {
+    if (!item.multiplier) total += (counts[item.key] ?? 0) * taiOf(item, overrides);
+  }
+  return Math.max(0, total);
+}
+
+export function describeTai(counts: Record<string, number>): string {
+  return allTaiItems()
+    .filter(i => (counts[i.key] ?? 0) > 0)
+    .map(i => (counts[i.key] > 1 ? `${i.name}×${counts[i.key]}` : i.name))
+    .join('、');
+}
