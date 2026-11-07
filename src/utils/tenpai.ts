@@ -4,7 +4,6 @@ export interface TileDef {
   index: number;
   group: TileGroup;
   top: string;
-  bottom: string;
   name: string;
 }
 
@@ -18,7 +17,6 @@ export const TILES: TileDef[] = [
       index: s * 9 + i,
       group: suit,
       top: n,
-      bottom: suit,
       name: `${n}${suit}`,
     })),
   ),
@@ -26,7 +24,6 @@ export const TILES: TileDef[] = [
     index: 27 + i,
     group: '字' as const,
     top: h,
-    bottom: '',
     name: h,
   })),
 ];

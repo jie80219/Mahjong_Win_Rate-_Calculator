@@ -529,6 +529,7 @@ button:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 
 .tile-picker { display: grid; gap: 8px; }
 .tile-row { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 4px; }
+.tile-row .tile { width: 100%; }
 
 .tile {
   display: flex;
@@ -544,8 +545,7 @@ button:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 }
 
 .tile:disabled { opacity: 0.35; }
-.tile-top { font-size: 15px; }
-.tile-bottom { font-size: 13px; color: var(--tile-red); }
+.tile-face { display: block; width: 100%; height: 100%; min-height: 0; flex: 1; }
 .tile-small { width: 31px; min-height: 42px; }
 .tile-static { width: 36px; min-height: 48px; }
 .tenpai-note { margin-top: 14px; font-size: 12px; color: var(--text-secondary); }
@@ -581,8 +581,6 @@ button:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 @media (max-width: 380px) {
   .seat-tile { width: 62px; height: 84px; }
   .seat-name { font-size: 21px; }
-  .tile-top { font-size: 13px; }
-  .tile-bottom { font-size: 11px; }
   .tile-row { gap: 3px; }
   .ledger { grid-template-columns: 1fr; }
 }

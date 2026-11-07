@@ -1,15 +1,6 @@
 import { useMemo, useState } from 'react';
 import { findWaits, MAX_COPIES, requiredHandSize, SAMPLE_HAND, TILE_GROUPS, TILES } from '../utils/tenpai';
-import type { TileDef } from '../utils/tenpai';
-
-function TileFace({ tile }: { tile: TileDef }) {
-  return (
-    <>
-      <span className="tile-top">{tile.top}</span>
-      {tile.bottom && <span className="tile-bottom">{tile.bottom}</span>}
-    </>
-  );
-}
+import TileFace from './TileFace';
 
 export default function TenpaiView() {
   const [hand, setHand] = useState<number[]>([]);
