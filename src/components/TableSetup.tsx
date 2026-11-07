@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react';
-import type { TableSession } from '../types';
 import { PLAYERS, getPlayerName } from '../db/players';
 import { loadLastTable } from '../utils/preferences';
 
@@ -12,14 +11,13 @@ interface StartTableArgs {
 }
 
 interface Props {
-  sessions: TableSession[];
   onStartTable: (args: StartTableArgs) => void;
-  onResumeSession: (session: TableSession) => void;
+  onBack: () => void;
 }
 
 type Step = 'select' | 'seat';
 
-export default function TableSetup({ sessions, onStartTable, onResumeSession }: Props) {
+export default function TableSetup({ onStartTable, onBack }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
   const [step, setStep] = useState<Step>('select');
   const [seatOrder, setSeatOrder] = useState<string[]>([]);
@@ -200,25 +198,9 @@ export default function TableSetup({ sessions, onStartTable, onResumeSession }: 
         {canStart ? '下一步：設定莊家' : `還需選 ${4 - selected.length} 人`}
       </button>
 
-      {sessions.length > 0 && (
-        <div className="recent-sessions">
-          <h3>最近牌桌</h3>
-          {sessions.slice(0, 5).map(s => (
-            <button
-              key={s.id}
-              className="session-item"
-              onClick={() => onResumeSession(s)}
-            >
-              <span className="session-players">
-                {s.playerIds.map(id => getPlayerName(id)).join('、')}
-              </span>
-              <span className="session-date">
-                {new Date(s.startedAt).toLocaleDateString('zh-TW')}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
+      <button className="btn-secondary btn-block setup-back" onClick={onBack}>
+        回首頁
+      </button>
     </div>
   );
 }

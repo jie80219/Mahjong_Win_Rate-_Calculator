@@ -1,53 +1,84 @@
 :root {
-  --bg: #f5f5f5;
-  --surface: #ffffff;
-  --text: #1a1a1a;
-  --text-secondary: #666;
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-light: #dbeafe;
-  --danger: #dc2626;
-  --danger-light: #fee2e2;
-  --success: #16a34a;
-  --border: #e5e5e5;
-  --shadow: 0 1px 3px rgba(0,0,0,0.1);
-  --radius: 10px;
-  --critical-bg: #fef3c7;
-  --critical-text: #92400e;
+  --bg: #f4eee1;
+  --surface: #fffbf2;
+  --text: #25282b;
+  --text-secondary: #6a655a;
+  --primary: #a93a24;
+  --primary-hover: #8e2e1b;
+  --primary-light: #f5ddd3;
+  --link: #a93a24;
+  --danger: #8f2a3c;
+  --danger-light: #f6dfe2;
+  --success: #2f6b62;
+  --border: #ddd3be;
+  --shadow: 0 1px 2px rgba(60,45,20,0.12);
+  --radius: 6px;
+  --critical-bg: #f8e8c4;
+  --critical-text: #7a4e0c;
+  --warm: #b7791f;
+  --gain: #a93a24;
+  --loss: #27506b;
+  --table-bg: #ebe3d0;
+  --hero-bg: #27384a;
+  --hero-text: #f8f2e5;
+  --tile-face: #fdf8ea;
+  --tile-ink: #25303a;
+  --tile-edge: #d6cbb2;
+  --tile-back: #27506b;
+  --tile-red: #a93a24;
+  --tile-muted: #6a655a;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #111;
-    --surface: #1e1e1e;
-    --text: #e5e5e5;
-    --text-secondary: #999;
-    --primary: #60a5fa;
-    --primary-hover: #3b82f6;
-    --primary-light: #1e3a5f;
-    --danger: #f87171;
-    --danger-light: #3b1111;
-    --border: #333;
+    --bg: #141821;
+    --surface: #1e2430;
+    --text: #efe9dc;
+    --text-secondary: #a8a294;
+    --primary: #c2452c;
+    --primary-hover: #a93a24;
+    --primary-light: #43231f;
+    --link: #f0876d;
+    --danger: #ee8a8f;
+    --danger-light: #3d2025;
+    --success: #6fbfaf;
+    --border: #333b4a;
     --shadow: 0 1px 3px rgba(0,0,0,0.4);
-    --critical-bg: #451a03;
-    --critical-text: #fbbf24;
+    --critical-bg: #3e2e12;
+    --critical-text: #f0c677;
+    --warm: #e3ae57;
+    --gain: #f0876d;
+    --loss: #8db8d8;
+    --table-bg: #1a202b;
+    --hero-bg: #27384a;
+    --hero-text: #f8f2e5;
+    --tile-back: #4a7a99;
   }
 }
 
 :root[data-theme="dark"] {
-  --bg: #111;
-  --surface: #1e1e1e;
-  --text: #e5e5e5;
-  --text-secondary: #999;
-  --primary: #60a5fa;
-  --primary-hover: #3b82f6;
-  --primary-light: #1e3a5f;
-  --danger: #f87171;
-  --danger-light: #3b1111;
-  --border: #333;
+  --bg: #141821;
+  --surface: #1e2430;
+  --text: #efe9dc;
+  --text-secondary: #a8a294;
+  --primary: #c2452c;
+  --primary-hover: #a93a24;
+  --primary-light: #43231f;
+  --link: #f0876d;
+  --danger: #ee8a8f;
+  --danger-light: #3d2025;
+  --success: #6fbfaf;
+  --border: #333b4a;
   --shadow: 0 1px 3px rgba(0,0,0,0.4);
-  --critical-bg: #451a03;
-  --critical-text: #fbbf24;
+  --critical-bg: #3e2e12;
+  --critical-text: #f0c677;
+  --warm: #e3ae57;
+  --gain: #f0876d;
+  --loss: #8db8d8;
+  --table-bg: #1a202b;
+  --hero-bg: #27384a;
+  --hero-text: #f8f2e5;
+  --tile-back: #4a7a99;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -157,23 +188,23 @@ button:disabled {
 }
 
 .seat-slot.dealer {
-  border-color: #f59e0b;
-  background: #fef3c7;
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
+  border-color: var(--warm);
+  background: var(--critical-bg);
+  box-shadow: 0 0 0 2px var(--critical-bg);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .seat-slot.dealer {
-    background: #451a03;
+    background: var(--critical-bg);
   }
 }
 :root[data-theme="dark"] .seat-slot.dealer {
-  background: #451a03;
+  background: var(--critical-bg);
 }
 
 .dealer-badge {
   display: inline-block;
-  background: #f59e0b;
+  background: var(--warm);
   color: #000;
   font-size: 11px;
   font-weight: 700;
@@ -277,7 +308,7 @@ button:disabled {
   padding: 12px 16px;
   margin-bottom: 12px;
   box-shadow: var(--shadow);
-  border-left: 4px solid #f59e0b;
+  border-left: 4px solid var(--warm);
 }
 
 .dealer-info-main {
@@ -289,7 +320,7 @@ button:disabled {
 }
 
 .dealer-wind {
-  color: #f59e0b;
+  color: var(--warm);
   font-size: 16px;
 }
 
@@ -343,9 +374,9 @@ button:disabled {
 }
 
 .dealer-adjust-btn.active {
-  background: #f59e0b;
+  background: var(--warm);
   color: #000;
-  border-color: #f59e0b;
+  border-color: var(--warm);
   font-weight: 700;
 }
 
@@ -380,8 +411,8 @@ button:disabled {
 .seat-drag-item:active { cursor: grabbing; }
 
 .seat-drag-item.dealer-selected {
-  border-color: #f59e0b;
-  background: rgba(245, 158, 11, 0.1);
+  border-color: var(--warm);
+  background: var(--critical-bg);
 }
 
 .seat-drag-wind {
@@ -394,7 +425,7 @@ button:disabled {
   border-radius: 6px;
   font-size: 14px;
   font-weight: 700;
-  color: #f59e0b;
+  color: var(--warm);
   flex-shrink: 0;
 }
 
@@ -432,7 +463,7 @@ button:disabled {
 
 .player-chip {
   background: var(--primary-light);
-  color: var(--primary);
+  color: var(--link);
   padding: 4px 12px;
   border-radius: 20px;
   font-size: 14px;
@@ -627,7 +658,7 @@ button:disabled {
   animation: slideUp 0.3s ease;
 }
 
-.undo-toast .btn-link { color: #60a5fa; }
+.undo-toast .btn-link { color: #f0a48f; }
 
 @keyframes slideUp {
   from { transform: translateX(-50%) translateY(20px); opacity: 0; }

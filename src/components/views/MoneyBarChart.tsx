@@ -40,7 +40,7 @@ export default function MoneyBarChart({ cumulativeMoney, playerIds }: Props) {
           />
           <Bar dataKey="value" radius={[4, 4, 0, 0]}>
             {data.map((d, i) => (
-              <Cell key={i} fill={d.value >= 0 ? '#22c55e' : '#ef4444'} />
+              <Cell key={i} fill={d.value >= 0 ? 'var(--gain)' : 'var(--loss)'} />
             ))}
           </Bar>
         </BarChart>

@@ -213,7 +213,7 @@ export default function Dashboard({
       {noData ? (
         <div className="no-data">
           <p>尚無牌局紀錄</p>
-          <p className="no-data-hint">按上方「記錄一局」開始</p>
+          <p className="no-data-hint">在上方牌桌拖曳或點選玩家，就能記下第一局</p>
         </div>
       ) : (
         <>

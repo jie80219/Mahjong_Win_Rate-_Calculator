@@ -2,7 +2,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import type { ComputedStats, MetricKey } from '../../types';
 import { getMetricLabel, getMetricNumerator } from '../../utils/stats';
 
-const COLORS = ['#4F86C6', '#E07A5F', '#81B29A', '#F2CC8F', '#3D405B', '#E36414'];
+const COLORS = ['#C9492F', '#3E7CA6', '#3F9384', '#C98F2E', '#8A6BB0', '#9A8A72'];
 
 interface Props {
   stats: ComputedStats[];

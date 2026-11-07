@@ -3,26 +3,40 @@ import type { TableSession, Preferences, Round } from './types';
 import { useTableSessions, useRounds, useAllTablePlayerIds } from './hooks/useDB';
 import { db } from './db';
 import { loadPreferences, savePreferences } from './utils/preferences';
-import { getPlayerName } from './db/players';
+import { PLAYERS } from './db/players';
 import { computePlayerStats, filterRoundsByDate } from './utils/stats';
 import { computeDealerState } from './utils/dealer';
 import { computeAllRoundsMoney, computeCumulativeMoney } from './utils/money';
+import HomeView from './components/HomeView';
 import TableSetup from './components/TableSetup';
-import RoundRecorder from './components/RoundRecorder';
+import TableBoard from './components/TableBoard';
+import ProfileView from './components/ProfileView';
+import TenpaiView from './components/TenpaiView';
+import RulesView from './components/RulesView';
 import Dashboard from './components/Dashboard';
 import HistoryPanel from './components/HistoryPanel';
 import BackupPanel from './components/BackupPanel';
 import DealerAdjustPanel from './components/DealerAdjustPanel';
 import './index.css';
+import './features.css';
 
-type View = 'setup' | 'game';
+type View = 'home' | 'setup' | 'game';
+type Tab = 'table' | 'profile' | 'tenpai' | 'rules';
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'table', label: '牌桌' },
+  { key: 'profile', label: '戰績' },
+  { key: 'tenpai', label: '聽牌' },
+  { key: 'rules', label: '規則' },
+];
 
 export default function App() {
   const { sessions, createSession, refresh: refreshSessions } = useTableSessions();
   const [activeSession, setActiveSession] = useState<TableSession | null>(null);
   const { rounds, allRounds, refresh: refreshRounds, addRound, updateRound, deleteRound } = useRounds(activeSession?.id ?? null);
   const { map: tablePlayerMap, refresh: refreshMap } = useAllTablePlayerIds();
-  const [view, setView] = useState<View>('setup');
+  const [view, setView] = useState<View>('home');
+  const [tab, setTab] = useState<Tab>('table');
   const [prefs, setPrefs] = useState<Preferences>(loadPreferences);
   const [showHistory, setShowHistory] = useState(false);
   const [showBackup, setShowBackup] = useState(false);
@@ -134,7 +148,7 @@ export default function App() {
 
   const handleBackToSetup = useCallback(() => {
     setActiveSession(null);
-    setView('setup');
+    setView('home');
   }, []);
 
   const scope = prefs.scope;
@@ -168,9 +182,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1 onClick={activeSession ? handleBackToSetup : undefined} style={activeSession ? { cursor: 'pointer' } : undefined}>
-          麻將勝率計算器
-        </h1>
+        <h1>麻將勝率計算器</h1>
         <div className="header-actions">
           <button className="btn-icon" onClick={() => setShowBackup(true)} title="備份與還原">
             ⚙
@@ -178,56 +190,52 @@ export default function App() {
         </div>
       </header>
 
-      {view === 'setup' && (
-        <TableSetup
+      {tab === 'table' && view === 'home' && (
+        <HomeView
           sessions={sessions}
-          onStartTable={handleStartTable}
+          rounds={allRounds}
+          tablePlayerMap={tablePlayerMap}
+          onNewTable={() => setView('setup')}
           onResumeSession={(s) => { setActiveSession(s); }}
         />
       )}
 
-      {view === 'game' && activeSession && (
+      {tab === 'table' && view === 'setup' && (
+        <TableSetup
+          onStartTable={handleStartTable}
+          onBack={() => setView('home')}
+        />
+      )}
+
+      {tab === 'profile' && (
+        <ProfileView
+          rounds={allRounds}
+          sessions={sessions}
+          tablePlayerMap={tablePlayerMap}
+          initialPlayerId={activeSession?.playerIds[0] ?? prefs.selectedPlayerIds[0] ?? PLAYERS[0].id}
+        />
+      )}
+
+      {tab === 'tenpai' && <TenpaiView />}
+
+      {tab === 'rules' && <RulesView />}
+
+      {tab === 'table' && view === 'game' && activeSession && (
         <>
-          <div className="table-banner">
-            <div className="table-players">
-              {activeSession.playerIds.map(pid => (
-                <span key={pid} className="player-chip">{getPlayerName(pid)}</span>
-              ))}
-              {(activeSession.baseMoney != null || activeSession.taiMoney != null) && (
-                <span className="money-info-chip">
-                  底{activeSession.baseMoney ?? 0} / 台{activeSession.taiMoney ?? 0}
-                </span>
-              )}
-            </div>
-            <button className="btn-secondary btn-sm" onClick={handleBackToSetup}>
-              換桌
-            </button>
-          </div>
-
-          {dealerState && (
-            <div className="dealer-info-bar">
-              <div className="dealer-info-main">
-                <span className="dealer-wind">{dealerState.wind}圈</span>
-                <span className="dealer-current">
-                  <span className="dealer-badge">莊</span>
-                  {getPlayerName(dealerState.dealerId)}
-                </span>
-                {dealerState.consecutive > 0 && (
-                  <span className="dealer-consecutive">連{dealerState.consecutive}</span>
-                )}
-                <DealerAdjustPanel
-                  session={activeSession}
-                  dealerState={dealerState}
-                  onApply={handleDealerAdjust}
-                />
-              </div>
-
-            </div>
-          )}
-
-          <RoundRecorder
-            tableSession={activeSession}
+          <TableBoard
+            session={activeSession}
+            rounds={rounds}
+            dealerState={dealerState}
+            dealerControl={dealerState && (
+              <DealerAdjustPanel
+                session={activeSession}
+                dealerState={dealerState}
+                onApply={handleDealerAdjust}
+              />
+            )}
             onSave={handleSaveRound}
+            onOpenHistory={() => handleOpenHistory()}
+            onLeave={handleBackToSetup}
           />
 
           {showUndo && (
@@ -251,14 +259,23 @@ export default function App() {
             roundsMoney={roundsMoney}
             cumulativeMoney={cumulativeMoney}
           />
-
-          <div className="section-actions">
-            <button className="btn-secondary" onClick={() => handleOpenHistory()}>
-              牌局紀錄
-            </button>
-          </div>
         </>
       )}
+
+      <nav className="tab-bar" aria-label="主要功能">
+        <div className="tab-bar-inner">
+          {TABS.map(t => (
+            <button
+              key={t.key}
+              className={`tab-item ${tab === t.key ? 'active' : ''}`}
+              aria-current={tab === t.key ? 'page' : undefined}
+              onClick={() => setTab(t.key)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </nav>
 
       {showHistory && activeSession && (
         <HistoryPanel
